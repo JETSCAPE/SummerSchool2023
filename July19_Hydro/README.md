@@ -26,7 +26,7 @@ In case of problems please head to the slack (you can find the link on the indic
   
 # Part I. Introduction 
 
-> Note: Please join the Slack Channel: [# july27-28-bulk-dynamics](https://jetscapeschool2022.slack.com/archives/C03G5K1CHN3) and post your questions there.
+> Note: Please join the Slack Channel: [# july19-bulk-dynamics](https://jetscapeschool2022.slack.com/archives/C03G5K1CHN3) and post your questions there.
 
 > Previous Hydro Sessions at [Summer School 2022](https://github.com/JETSCAPE/SummerSchool2022/tree/main/Jul28_Hydro)(Lecturer: Lipei Du).
 [Summer School 2021](https://github.com/JETSCAPE/SummerSchool2021/tree/master/Jul21_Hydro/hydro_session) and [Summer School 2020](https://github.com/JETSCAPE/SummerSchool2020/tree/master/hydro_session) (Lecturer: Chun Shen).
@@ -367,7 +367,7 @@ Subtract_hard_momentum 1             # flag to subtract the hard energy in the 3
 ...
 ...
 ```
-<details>
+</details>
 
 
 The box below contains the parameters of `3DGlauber` part in the `jetscape_user_iMATTERMCGlauberMUSIC.xml`.
@@ -492,7 +492,7 @@ Subtract_hard_momentum 0             # flag to subtract the hard energy in the 3
 ...
 ...
 ```
-<details>
+</details>
 
 
 Users can run the `3DGlauber` with following command,
@@ -545,7 +545,7 @@ Subtract_hard_momentum 0             # flag to subtract the hard energy in the 3
 ...
 ...
 ```
-<details>
+</details>
 
 Run the script,
 
@@ -573,7 +573,7 @@ Subtract_hard_momentum 1             # flag to subtract the hard energy in the 3
 ...
 ...
 ```
-<details>
+</details>
 
 Here, we change the `pTHatMin = 800.` and `pTHatMin = 1000.` in the xml file in `../config/jetscape_user_iMATTERMCGlauberMUSIC.xml`.
 
@@ -631,7 +631,7 @@ Subtract_hard_momentum 1             # flag to subtract the hard energy in the 3
 ...
 ...
 ```
-<details>
+</details>
 
 Change the parameter in the `build/music_input`
 
@@ -648,7 +648,7 @@ Grid_size_in_x 64             # number of the grid points in x direction
 ...
 ...
 ```
-<details>
+</details>
 
 Change the parameter in the `config/jetscape_user_iMATTERMCGlauberMUSIC.xml`
 
@@ -667,7 +667,7 @@ Change the parameter in the `config/jetscape_user_iMATTERMCGlauberMUSIC.xml`
 ...
 ...
 ```
-<details>
+</details>
 
 Then run `3DGlauber+iMATTER+MUSIC+iSS` by the command,
 
