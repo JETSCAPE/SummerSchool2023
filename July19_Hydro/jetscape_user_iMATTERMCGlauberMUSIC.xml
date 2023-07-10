@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+
+<jetscape>
+
+  <enableAutomaticTaskListDetermination> false </enableAutomaticTaskListDetermination>
+
+  <setReuseHydro> true </setReuseHydro>
+  <nReuseHydro> 1000 </nReuseHydro>
+
+  <vlevel> 0 </vlevel>
+
+  <nEvents> 1000 </nEvents>
+
+  <Random>
+    <seed> 0 </seed>
+  </Random>
+
+  <JetScapeWriterAscii> on </JetScapeWriterAscii>
+
+  <!-- Hard Process -->
+  <Hard>
+    <PythiaGun>
+      <pTHatMin>7.4</pTHatMin>
+      <pTHatMax>-1</pTHatMax>
+      <eCM>50.0</eCM>
+      <LinesToRead>
+        PhaseSpace:bias2Selection = on
+        PhaseSpace:bias2SelectionPow = 4
+        PhaseSpace:bias2SelectionRef = 4
+        SigmaProcess:alphaSvalue = 0.19
+        MultipartonInteractions:alphaSvalue = 0.19
+        MultipartonInteractions:pTmin = 7.12
+      </LinesToRead>
+      <useHybridHad>1</useHybridHad>
+    </PythiaGun>
+  </Hard>
+
+  <!--Preequilibrium Dynamics Module -->
+  <Preequilibrium>
+    <NullPreDynamics> </NullPreDynamics>
+  </Preequilibrium>
+
+  <!-- Initial condition  Module  -->
+  <IS>
+    <MCGlauber> 
+        <ylossParam4At2> 1.1 </ylossParam4At2>
+        <ylossParam4At4> 2.5 </ylossParam4At4>
+        <ylossParam4At6> 1.7 </ylossParam4At6>
+        <ylossParam4At10> 3.5 </ylossParam4At10>
+        <ylossParam4var> 0.34 </ylossParam4var>
+    </MCGlauber>
+  </IS>
+
+  <!-- Hydro  Module  -->
+  <Hydro>
+        <MUSIC>
+            <InitialProfile> 13 </InitialProfile>
+            <beastMode> 2 </beastMode>
+            <string_source_sigma_x> 0.6 </string_source_sigma_x>
+            <string_source_sigma_eta> 0.4 </string_source_sigma_eta>
+            <stringPreEqFlowFactor> 0.15 </stringPreEqFlowFactor>
+            <output_evolution_to_file>0</output_evolution_to_file>
+            <store_hydro_info_in_memory>0</store_hydro_info_in_memory>
+            <T_dependent_Shear_to_S_ratio> 3 </T_dependent_Shear_to_S_ratio>
+            <temperature_dependent_bulk_viscosity>3</temperature_dependent_bulk_viscosity>
+            <bulk_viscosity_3_max> 0.08 </bulk_viscosity_3_max>
+            <shear_viscosity_3_at_kink> 0.2 </shear_viscosity_3_at_kink>
+            <freezeout_temperature> 0.3 </freezeout_temperature>
+        </MUSIC>
+  </Hydro>
+
+  <!--Eloss Modules -->
+  <Eloss>
+    <maxT>50</maxT>
+    <Matter>
+      <Q0> 2.0 </Q0>
+      <in_vac> 1 </in_vac>
+      <useHybridHad>1</useHybridHad>
+      <vir_factor> 0.63 </vir_factor>
+      <recoil_on> 0 </recoil_on>
+      <broadening_on> 0 </broadening_on>
+      <brick_med> 0 </brick_med>
+    </Matter>
+  </Eloss>
+
+  <!-- Jet Hadronization Module -->
+  <JetHadronization>
+    <name>colorless</name>
+  </JetHadronization>
+
+  <!-- Particlization Module  -->
+  <SoftParticlization>
+    <iSS>
+        <number_of_repeated_sampling> 1000 </number_of_repeated_sampling>
+        <Perform_resonance_decays> 1 </Perform_resonance_decays>
+    </iSS>
+  </SoftParticlization>
+
+</jetscape>
+

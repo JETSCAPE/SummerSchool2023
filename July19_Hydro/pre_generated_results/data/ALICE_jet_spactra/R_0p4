@@ -1,0 +1,23 @@
+#: table_doi: 10.17182/hepdata.93739.v1/t4
+#: name: Table 4
+#: description: Fig. 1 Left  data for jet radius R=0.4. Unfolded pp full jet cross-section at $\sqrt{s}$ = 5.02 TeV for R = 0.1 − 0.6. No leading track requirement is imposed.
+#: data_file: Fig1_Left_04.yaml
+#: keyword reactions: P P --> jet + X | Pb Pb --> jet + X
+#: keyword cmenergies: 5020.0
+#: keyword phrases: Inclusive | Cross Section | Proton-Proton Scattering | Jet Production | RAA
+#: RE   P P --> jet + X
+#: SQRT(S) [GEV]   5020
+#: YRAP   -0.3 TO 0.3
+#: jet radius   0.4
+#: jet method   Anti-$k_{T}$
+#PTjet [GEV] PTjet [GEV] LOW PTjet [GEV] HIGH $d^{2}\sigma/dp_{T}d\eta$ [mb $c$/GeV] stat + stat - "sys correlated +" "sys correlated -" "sys shape +" "sys shape -" "sys lumi +" "sys lumi -"
+25.0 20 30 0.002859142 1.984593e-05 -1.984593e-05 0.0002767399 -0.0002767399 4.56556e-05 -4.56556e-05 0.021 -0.021
+35.0 30 40 0.0005587883 6.57684e-06 -6.57684e-06 5.190711e-05 -5.190711e-05 6.183529e-06 -6.183529e-06 0.021 -0.021
+45.0 40 50 0.0001655732 2.76712e-06 -2.76712e-06 1.565849e-05 -1.565849e-05 1.313828e-06 -1.313828e-06 0.021 -0.021
+55.0 50 60 6.20851e-05 1.459577e-06 -1.459577e-06 6.052956e-06 -6.052956e-06 4.082403e-07 -4.082403e-07 0.021 -0.021
+65.0 60 70 2.716016e-05 8.206908e-07 -8.206908e-07 2.750107e-06 -2.750107e-06 1.897778e-07 -1.897778e-07 0.021 -0.021
+75.0 70 80 1.310161e-05 5.020687e-07 -5.020687e-07 1.381774e-06 -1.381774e-06 1.201498e-07 -1.201498e-07 0.021 -0.021
+90.0 80 100 5.305674e-06 2.77741e-07 -2.77741e-07 5.887386e-07 -5.887386e-07 8.365388e-08 -8.365388e-08 0.021 -0.021
+110.0 100 120 1.793286e-06 1.327364e-07 -1.327364e-07 2.098742e-07 -2.098742e-07 5.516465e-08 -5.516465e-08 0.021 -0.021
+130.0 120 140 7.205898e-07 7.261192e-08 -7.261192e-08 8.959393e-08 -8.959393e-08 3.807759e-08 -3.807759e-08 0.021 -0.021
+
