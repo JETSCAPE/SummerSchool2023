@@ -2,7 +2,7 @@
 
 Please carefully complete **all** of the below instructions **by Wednesday July 19**.
 
-In case of problems please head to the slack (you can find the link on the indico page) and ask in the `software-install-problems` channel.
+In case of problems please head to the slack and ask in the [# july19-bulk-dynamics](https://jetscape2023o-d166455.slack.com/archives/C05G3P2QN5V) channel.
 
 # Table of contents
 - **Part I. Introduction**
@@ -42,13 +42,15 @@ The **X**-ion collisions with a **S**tatistically and **C**omputationally **A**d
 
 The first hard scattering is sampled using `PYTHIA8`. The `iMatter` models the backward initial-state parton shower for the produced high-energy particles. Then the hard energy of hard partons are subtracted in the `3DGlauber`. The subtracted  `3DGlauber` generates the initial condition for hydrodynamic module `MUSIC`, which will evolve the collision system starting as a hot QGP to a hadron gas. `iSS` particle sampler converts the fluid cells to individual hadrons, including resonance decays. Finally, `PYTHIA8` is used to hadronize the shower particles from `iMatter` with the collision remnants provided by the `3DGlauber` model.
 
+<img src="figs/workflow.png" alt="4" width="800"/> 
+
 ## (2) Goals
 
 - In this Hydro Session, participants will understand how to run X-SCAPE with a few default modules;
 
 - With 3DGlauber model, participants will understand the dynamical initial condition at low energies, and the asymmetries for the asymmetric light nuclei + heavy nucleus collisions.
 
-- Participants will run X-SCAPE code to understand the soft-hard correlations in small systems, understand the X-SCAPE output, and calculate some basic observables like hadron and jet $p_T$-spectra from low $p_T$ to high $p_T$.
+- Participants will run X-SCAPE code to understand the soft-hard correlations in small systems, understand the X-SCAPE output, and calculate some basic observables like hadron $p_T$-spectra from low $p_T$ to high $p_T$.
 
 
 # Part II. Build the X-SCAPE framework
@@ -57,11 +59,11 @@ The first hard scattering is sampled using `PYTHIA8`. The `iMatter` models the b
 
 We will use code from several git repositories throughout the course of the school,
 which you will run in a controlled software environment (docker). 
-Create a single directory to store all materials from the school:
+Create a single directory to store all materials from the school (If you have already done, then just ignore this step):
 
 ```bash
-mkdir jetscape-docker
-cd jetscape-docker
+mkdir ~/jetscape-docker
+cd ~/jetscape-docker
 ```
 
 In what follows we assume such a directory at `~/jetscape-docker`. You may decide to name your directory something else,
@@ -96,7 +98,7 @@ ls ~/jetscape-docker/X-SCAPE/external_packages
 
 you should see `3dMCGlauber`, `music` and `iSS` folders present. **They are modules needed for the Hydro Session.**
 
-## (2) Install docker
+## (2) Install docker (If you have installed docker, please ignore this step.)
 
 Docker is a software tool that allows one to deploy an application in a portable environment. 
 A docker "image" can be created for the application, allowing any user to run a docker "container" from this image.
@@ -480,7 +482,7 @@ cd X-SCAPE/external_packages/3dMCGlauber/
 mkdir build
 cd build
 cmake ..
-make -j4     # Builds using 4 cores; adapt as appropriate
+make -j8     # Builds using 8 cores; adapt as appropriate
 make install
 cd ../
 ```
@@ -528,7 +530,7 @@ From **inside** the docker container, In  `X-SCAPE /build` directory, we can now
 mkdir build
 cd build
 cmake .. -DUSE_3DGlauber=ON -DUSE_MUSIC=ON -DUSE_ISS=ON
-make -j4     # Builds using 4 cores; adapt as appropriate
+make -j8     # Builds using 8 cores; adapt as appropriate
 make install
 ```
 
@@ -688,10 +690,11 @@ Then run `3DGlauber+iMATTER+MUSIC+iSS` by the command,
 ```bash
 ./PythiaIsrMUSIC
 ```
+> During running the code, users can run the notebook `Hydro_hand_on_Section.ipynb` with the pre-generated results saved in folder `pre_generated_results` to see the time evolution of bulk Temperature, spatial and momentum anisotropy, also the depletion of the bulk multiplicity with different pTHat bins in hard part.
 
 After finishing running, users can see the some output files inside the `build` folder.
 
-<img src="figs/Output_XSCAPE.png" alt="4" width="800"/> 
+<img src="figs/Output_XSCAPE.png" alt="4" width="600"/> 
 
 `averaged_phase_diagram_trajectory_eta_*_*.dat`, `eccentricities_evo_ed_tau_*.dat`, `meanpT_estimators_eta_*_*.dat` and `momentum_anisotropy_eta_*_*.dat` are the MUSIC output, which contain the bulk medium evolution information. `surface.dat` is the freeze-out hyper-surface. Users can run the notebook `Hydro_hand_on_Section.ipynb` get some intuition about the temperature, spatial and momentum anisotropy time.
 `particle_samples.bin` contains the hardrons after the `iSS` sampling on the hydro hyper-surface.
@@ -751,14 +754,18 @@ Below is what is in `Hard_hadron_yield` file:
 ...
 ```
 
+Uses can combine many events with their weight to calculate the observables. 
+
+<img src="figs/Weight_method.png" alt="4" width="500"/> 
+
 ## (6) HOMEWORK 
 ## Reproduce the hadron and jet $p_T$-spectra in p-p collision at 5.02 TeV
 
 Users can use the the xml parameter file `jetscape_user_iMATTERMCGlauberMUSIC.xml` and run this X-SCAPE code `PythiaIsrMUSIC` to accumulates enough events. Users can reproduce the following results of $p_T$-spectra of hadrons and jets from low $p_T$ to high $p_T$ in p-p collisions.
 
-<img src="figs/hadron_spectra.png" alt="4" width="800"/> 
+<img src="figs/hadron_spectra.png" alt="4" width="500"/> 
 
-<img src="figs/jet_spectra.png" alt="4" width="800"/> 
+<img src="figs/jet_spectra.png" alt="4" width="500"/> 
 
 The current results are not prefect yet. For example,  $p_T$-spectra of hadron at intermediate $p_T$ is below data. Users can find the method to improve the discriptions, such as include quark coalescence hadronzation contributions, or use Bayesian analyse to find a better parameter set. It would be a great work.
 
