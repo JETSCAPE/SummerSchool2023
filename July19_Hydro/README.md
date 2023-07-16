@@ -18,7 +18,7 @@ In case of problems please head to the slack and ask in the [# july19-bulk-dynam
   - iii. Setup with different parameter files
 - **Part IV. Run the X-SCAPE framework**
   - Exercise 1. Run 3DGlauber, get some intuition on the dynamical initial condition.
-  - Exercise 2. Run X-SCPAE code, get some intuition on the soft-hard correlations in small systems.
+  - Exercise 2. Run X-SCPAE code of 3DGlauber + iMATTER, get some intuition on the soft-hard correlations in small systems.
   - Exercise 3. Run full X-SCAPE code, understand the whole process, and get some results.
 
 - **Homework**
@@ -36,8 +36,8 @@ In case of problems please head to the slack and ask in the [# july19-bulk-dynam
 The **X**-ion collisions with a **S**tatistically and **C**omputationally **A**dvanced **P**rogram **E**nvelope (X-SCAPE) is the enhanced (and 2nd) project of the JETSCAPE collaboration which extends the framework to include small systems created in p-A and p-p collisions, lower energy heavy-ion collisions and electron-Ion collisions. The new framework allows for novel functionality such as the ability of the main simulation clock to go backwards and forwards, to deal systematically with initial state and final state evolution. It allows for multiple bulk event generators to run concurrently while exchanging information via a new Bulk Dynamics Manager.  We will use the following modules within the X-SCAPE framework for the Hydro Session today:
 
 ```c++
-'PYTHIA8' (initial hard parton) + '3DGlauber' (initial condition) + 'iMATTER' (parton shower) 
-+ 'MUSIC' (hydrodynamics) + 'iSS' (particlization)
+PYTHIA8 (initial hard parton) + 3DGlauber (initial condition) + iMATTER (parton shower) 
++ MUSIC (hydrodynamics) + iSS (particlization)
 ```
 
 The first hard scattering is sampled using `PYTHIA8`. The `iMatter` models the backward initial-state parton shower for the produced high-energy particles. Then the hard energy of hard partons are subtracted in the `3DGlauber`. The subtracted  `3DGlauber` generates the initial condition for hydrodynamic module `MUSIC`, which will evolve the collision system starting as a hot QGP to a hadron gas. `iSS` particle sampler converts the fluid cells to individual hadrons, including resonance decays. Finally, `PYTHIA8` is used to hadronize the shower particles from `iMatter` with the collision remnants provided by the `3DGlauber` model.
@@ -98,7 +98,7 @@ ls ~/jetscape-docker/X-SCAPE/external_packages
 
 you should see `3dMCGlauber`, `music` and `iSS` folders present. **They are modules needed for the Hydro Session.**
 
-## (2) Install docker (If you have installed docker, please ignore this step.)
+## (2) Install docker 
 
 Docker is a software tool that allows one to deploy an application in a portable environment. 
 A docker "image" can be created for the application, allowing any user to run a docker "container" from this image.
@@ -116,7 +116,7 @@ But anytime you want to edit text files (e.g. to construct your own configuratio
 host machine (which we recommend). Simple as that: Depending which action you want to do, perform it either on the host machine, 
 or in the docker container, as appropriate &mdash; otherwise it will not work.
 
-### Install
+### Install (If you have installed docker, please ignore this step.)
 
 #### macOS
 
@@ -487,13 +487,13 @@ make install
 cd ../
 ```
 
-Now we are in the `3dMCGlauber` folder. We should see  the `3dMCGlb.e` the executable file for 3DGlauber model, the `input` parameter file.
+Now we are in the `3dMCGlauber` folder. We should see  the `3dMCGlb.e`  executable file for 3DGlauber model, the `input` parameter file.
 Change the parameters in the `input`  file accordingly. For this excise, we only change the 
 
 
 <details>
 
-​	<summary>Click to see part of `mcglauber.input`</summary>
+​	<summary>Click to see part of `input`</summary>
 
 
 
@@ -519,10 +519,10 @@ Users can run the `3DGlauber` with following command,
 The first `1` means run one event, second `1` is the random seed. One can see the output file `strings_event_0.dat` in the same folder, which contains the initial strings for the following hydrodynamic evolution. 
 Then users can plot the space-time  distribution of the strings at their thermalization. In your browser, we first go into the `hydro_session` folder, and then open the notebook `Hydro_hand_on_Section.ipynb` by clicking on it. Once the notebook is open, the user can execute the cells in this notebook. Press `shift+enter` or click `Run` button on the top to execute the cell blocks in the notebook. 
 
-By changing parameters in the `mcglauber.input`, users can plot the string distributions at low or high energies, and at small or large systems, and build some intuition about the dynamical initial conditions.
+By changing parameters in the `input`, users can plot the string distributions at low or high energies, and at small or large systems, and build some intuition about the dynamical initial conditions.
 
 ## (5) Run of X-SCAPE 
-> In this exercise, we will run the framework with the `jetscape_user_iMATTERMCGlauberMUSIC.xml`, which runs `3DGlauber+iMATTER` or `3DGlauber+iMATTER+MUSIC+iSS` and produces string files and a particle list. 
+> In this exercise, we will runs `3DGlauber+iMATTER` or `3DGlauber+iMATTER+MUSIC+iSS` with parameter file `jetscape_user_iMATTERMCGlauberMUSIC.xml` to and produces string files and a particle list. 
 
 From **inside** the docker container, In  `X-SCAPE /build` directory, we can now build JETSCAPE:
 
@@ -536,7 +536,7 @@ make install
 
 Flags `-DUSE_3DGlauber=ON -DUSE_MUSIC=ON -DUSE_ISS=ON` above mean we are building JETSCAPE framework with `3DGlauber`, `MUSIC` and `iSS` modules on. 
 
-After finishing the compile, users can see the executable file `PythiaIsrTest` and `PythiaIsrMUSIC` in the build folder.
+After finishing the compile, users can see the executable files `PythiaIsrTest` and `PythiaIsrMUSIC` in the build folder.
 `PythiaIsrTest` runs the `3D-Glauber+iMATTER`, `PythiaIsrMUSIC` runs the `3D-Glauber+iMATTER+MUSIC+iSS`.
 The parameter file is `../config/jetscape_user_iMATTERMCGlauberMUSIC.xml`.
 
@@ -590,7 +590,7 @@ Subtract_hard_momentum 1              # flag to subtract the hard energy in the 
 ```
 </details>
 
-Here, we change to `pTHatMin = 800.` and `pTHatMin = 1000.` in the xml file in `../config/jetscape_user_iMATTERMCGlauberMUSIC.xml`.
+Here, we change to `pTHatMin = 800.` and `pTHatMax = 1000.` in the xml file in `../config/jetscape_user_iMATTERMCGlauberMUSIC.xml`.
 
 <details>
 
@@ -622,7 +622,7 @@ Run the script,
 
 The above command creates a folder `String_files_800` and generates 20 strings files with subtraction of hard energy generated with pTHat between 800 and 1000 GeV/c, and move them into this folder. 
 
-With the produced above two folders, the users can apply the analysis script to compute the $dE/d\eta_{s}/(cosh(\eta_{s}))$ as a function of the spatial rapidity for the generated string files with and without the subtraction of the hard energies in the p-p collisions. In your browser, we use the notebook `Hydro_hand_on_Section.ipynb`. The user can execute the cells in this notebook. Press `shift+enter` or press the `Run` button to execute the cell blocks in the notebook. It will output the averaged energy of initial string files, and two curves with and without subtraction hard energies in p-p collisions.
+After the produceing above two folders, the users can apply the analysis script to compute the $dE/d\eta_{s}/(cosh(\eta_{s}))$ as a function of the spatial rapidity for the generated string files with and without the subtraction of the hard energies in the p-p collisions. In your browser, we use the notebook `Hydro_hand_on_Section.ipynb`. The user can execute the cells in this notebook. Press `shift+enter` or press the `Run` button to execute the cell blocks in the notebook. It will output the averaged energy of initial string files, and two curves with and without subtraction hard energies in p-p collisions.
 
 ## ii. Run 3DGlauber + iMATTER + MUSIC + iSS
 
@@ -683,7 +683,7 @@ Change the parameter in the `config/jetscape_user_iMATTERMCGlauberMUSIC.xml`
 ```
 </details>
 
-Please note when `<pTHatMax>` smaller than `<pTHatMin>`, it means open-ended for pTHat in `pythia8`.
+Please note when `pTHatMax` smaller than `pTHatMin`, it means open-ended for pTHat in `pythia8`.
 
 Then run `3DGlauber+iMATTER+MUSIC+iSS` by the command,
 
@@ -696,8 +696,8 @@ After finishing running, users can see the some output files inside the `build` 
 
 <img src="figs/Output_XSCAPE.png" alt="4" width="600"/> 
 
-`averaged_phase_diagram_trajectory_eta_*_*.dat`, `eccentricities_evo_ed_tau_*.dat`, `meanpT_estimators_eta_*_*.dat` and `momentum_anisotropy_eta_*_*.dat` are the MUSIC output, which contain the bulk medium evolution information. `surface.dat` is the freeze-out hyper-surface. Users can run the notebook `Hydro_hand_on_Section.ipynb` get some intuition about the temperature, spatial and momentum anisotropy time.
-`particle_samples.bin` contains the hardrons after the `iSS` sampling on the hydro hyper-surface.
+`averaged_phase_diagram_trajectory_eta_*_*.dat`, `eccentricities_evo_ed_tau_*.dat`, `meanpT_estimators_eta_*_*.dat` and `momentum_anisotropy_eta_*_*.dat` are the MUSIC output, which contain the bulk medium evolution information. `surface.dat` is the freeze-out hyper-surface. Users can run the notebook `Hydro_hand_on_Section.ipynb` get some intuition about the temperature, spatial and momentum anisotropy time evolution.
+`particle_samples.bin` is a binary format file, which contains the hardrons after the `iSS` sampling on the hydro hyper-surface.
 `test_out_final_state_partons.dat` contains the hard partons output from `iMATTER`.
 `test_out_final_state_hadrons.dat` contains the final state hadron list including both the soft hadron from `iSS` and hard hadrons from  `iMATTER`.
  
