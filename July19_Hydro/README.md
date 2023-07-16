@@ -150,19 +150,19 @@ Create and start the docker container that contains all of the JETSCAPE pre-reqs
 
 **macOS:**
 ```bash
-docker run -it -v ~/jetscape-docker:/home/jetscape-user --name myJetscape jetscape/base:stable
+docker run -it -v ~/jetscape-docker:/home/jetscape-user --name myJetscape jetscape/school:2023.1
 ```
 
 **linux:**
 ```bash
-docker run -it -v ~/jetscape-docker:/home/jetscape-user --name myJetscape --user $(id -u):$(id -g) jetscape/base:stable
+docker run -it -v ~/jetscape-docker:/home/jetscape-user --name myJetscape --user $(id -u):$(id -g) jetscape/school:2023.1
 ```
 Under Linux, if you encounter an error like `permission denied`, you can use `sudo` in front of the docker run command.
 
 **windows:**
 For example open a Windows command window using the 'cmd' command then:
 ```bash
-docker run -it -v <fullpath>/jetscape-docker:/home/jetscape-user --name myJetscape -p 8888:8888 jetscape/base:stable
+docker run -it -v <fullpath>/jetscape-docker:/home/jetscape-user --name myJetscape -p 8888:8888 jetscape/school:2023.1
 ```
 where `<fullpath>` would be c:\users\...\documents\ or wherever the `jetscape-docker` folder was placed.
 
