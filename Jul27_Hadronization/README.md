@@ -13,6 +13,7 @@ If you encounter any problems feel free to contact us on slack in the [# july27-
 - **Part II: Get ready for the hadronization session**
 - **Part III: Run some simulations for the session**
     - i. $e^+e^-$
+    - ii. Brick simulations
 
 
 # Part I: Introduction
@@ -88,6 +89,9 @@ The simulation of 1000 jets in colorless hadronization will run for up to $\appr
 
 :warning: For the analysis with the sparkx package we have to modify the X-SCAPE output a bit, as the package is designed to read Jetscape output at the moment. In future updates it will be adapted to the X-SCAPE output as well. For the moment please run the following script in `~/SummerSchool2023/Jul27_Hadronization/` after you have done all the simulation runs:
 ```
-./change_XSCAPE_hadron_output_sparkx
+./change_XSCAPE_hadron_output_sparkx.sh
 ```
 > Note: You can also execute the script multiple times, it will not modify the output even further.
+
+# Part IV: Hands-on session
+Information on the jupyter notebooks...
