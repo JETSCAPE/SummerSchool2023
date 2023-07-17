@@ -9,10 +9,10 @@
 
   <vlevel> 0 </vlevel>
 
-  <nEvents> 1 </nEvents>
+  <nEvents> 1000 </nEvents>
 
   <Random>
-    <seed> 1 </seed>
+    <seed> 0 </seed>
   </Random>
 
   <JetScapeWriterAscii> on </JetScapeWriterAscii>
@@ -22,7 +22,7 @@
     <PythiaGun>
       <pTHatMin>7.4</pTHatMin>
       <pTHatMax>-1</pTHatMax>
-      <eCM>50.0</eCM>
+      <eCM>5020.0</eCM>
       <LinesToRead>
         PhaseSpace:bias2Selection = on
         PhaseSpace:bias2SelectionPow = 4
