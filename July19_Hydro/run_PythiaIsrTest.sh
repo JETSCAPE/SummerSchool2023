@@ -7,7 +7,7 @@ if [ -d "$folder_path" ]; then
 fi
 
 mkdir $folder_path
-for((i=0; i<20; i++)); do
+for((i=0; i<1; i++)); do
     ./PythiaIsrTest
     mv strings_event_0.dat $folder_path/$i
 done
