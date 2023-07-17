@@ -528,6 +528,7 @@ Launch jupyter notebook inside the docker contain with the following command
 in our working directory (**`~/X-SCAPE/build`**),
 
 ```
+pip install jupyterlab==3.0.0 tornado==6.1
 cd  ~/jetscape-docker/X-SCAPE/build
 jupyter notebook --ip 0.0.0.0 --no-browser 
 ```
