@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+ <jetscape>
+
+  <!-- General settings -->
+  <nEvents> 10000 </nEvents>
+
+  <!--  JetScape Writer Settings -->
+  <outputFilename>./hadronization_results/hadrons_epem</outputFilename>
+  <JetScapeWriterFinalStateHadronsAscii> on </JetScapeWriterFinalStateHadronsAscii>
+
+  <!--  Random Settings. For now, just a global  seed. -->
+  <!--  Note: It's each modules responsibility to adopt it -->
+  <!--  Note: Most if not all modules should understand 0 to mean a random value -->
+  <!--  Note: Both 0 and non-zero values require careful treatment in case of multi-threading -->
+  <!--           An example implementation is in JetEnergyLossManager.cc -->
+  <Random>
+    <seed>42</seed>
+  </Random>
+
+  <!-- Hard Process -->
+  <Hard>
+    <epemGun>
+      <name>epemgun</name>
+      <eCM>91.2</eCM>
+    </epemGun>
+  </Hard>
+
+  <!--Eloss Modules -->
+  <!-- Individual Eloss Modules run Eloss and Eloss Manager  -->
+  <Eloss>
+
+    <maxT>40</maxT>
+
+    <Matter>
+      <name>Matter</name>
+      <Q0> 1.0 </Q0>
+      <vir_factor> -1.1 </vir_factor>
+      <in_vac> 1 </in_vac>
+    </Matter>
+  </Eloss>
+
+  <!-- Jet Hadronization Module -->
+   <JetHadronization>
+       <name>hybrid</name>
+       <!--eCMforHadronization only for pp collisions-->
+       <!--in hybrid put the full eCM here, this is distributed to the beam partons-->
+       <eCMforHadronization>0.0</eCMforHadronization>
+       <had_postprop>0.0</had_postprop>
+       <part_prop>1.0</part_prop>
+       <weak_decays>off</weak_decays>
+       <reco_hadrons_in_pythia>1</reco_hadrons_in_pythia>
+   </JetHadronization>
+
+</jetscape>
