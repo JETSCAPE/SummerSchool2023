@@ -95,6 +95,7 @@ void Brick::GetHydroInfo(
 
   // assign all the quantites to JETSCAPE output
   // thermodyanmic quantities
+  hydro_status = FINISHED;
 
   if (hydro_status == FINISHED) {
     fluid_cell_info_ptr->energy_density = 0.0;

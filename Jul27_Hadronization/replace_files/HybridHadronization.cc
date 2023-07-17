@@ -358,16 +358,6 @@ void HybridHadronization::InitTask(){
       pythia.readString(s);
     }
 
-    // optional input of another pythia particle data xml file (higher excited states,...)
-    xml_intin = GetXMLElementInt({"JetHadronization", "additional_pythia_particles"});
-	  if(xml_intin == 0 || xml_intin == 1){additional_pythia_particles = xml_intin;} xml_intin = -1;
-
-    if(additional_pythia_particles == 1) {
-      std::string additional_pythia_particle_file =
-        GetXMLElementText({"JetHadronization", "additional_pythia_particles_path"});
-      pythia.particleData.readXML(additional_pythia_particle_file,false);
-    }
-
     // And initialize
     pythia.init();
 
@@ -457,27 +447,6 @@ void HybridHadronization::DoHadronization(vector<vector<shared_ptr<Parton>>>& sh
 	  JSDEBUG<<"Shower#"<<ishower+1 << ". Number of partons to hadronize: " << HH_shower.num();
 	  JSDEBUG<<"Shower#"<<ishower+1 << ". Number of (neg) partons to hadronize: " << neg_ptns.num();
   }
-
-  //to calc. E conservation violation
-  double E_pos = 0.; double E_neg = 0.;
-  for(int iPart=0; iPart<HH_shower.num(); ++iPart){E_pos += HH_shower[iPart].e();}
-  for(int iPart=0; iPart<neg_ptns.num(); ++iPart){E_neg += neg_ptns[iPart].e();}
-
-  std::cout << std::setprecision(5);
-  std::ofstream eviol;
-  eviol.open("Evio_partons.dat", std::ios::app);
-  eviol << E_pos-E_neg << "\n";
-  eviol.close();
-
-  /*JSINFO << "Initial state:";
-  JSINFO << "id,col,acol,t,E,mass";
-  for(int i=0; i<HH_shower.num(); i++) {
-    std::cout << HH_shower[i].id() << "," << HH_shower[i].col() << "," << HH_shower[i].acol() << "," << HH_shower[i].x_t() << "," << HH_shower[i].e() << "," << HH_shower[i].mass() << std::endl;
-  }
-  JSINFO << "negative partons:";
-  for(int i=0; i<neg_ptns.num(); i++) {
-    std::cout << neg_ptns[i].id() << "," << neg_ptns[i].col() << "," << neg_ptns[i].acol() << "," << neg_ptns[i].x_t() << "," << neg_ptns[i].e() << "," << neg_ptns[i].mass() << std::endl;
-  }*/
 
 	//checking to see if in brick, and if so then propagate all partons to hypersurface!
 	bool in_brick = false; double brick_L = -1;
@@ -659,11 +628,6 @@ void HybridHadronization::DoHadronization(vector<vector<shared_ptr<Parton>>>& sh
         }
       }
 
-      JSINFO << "HH_pyremn:";
-      for(int i=0; i < HH_pyremn.num(); i++){
-        std::cout << HH_pyremn[i].id() << "," << HH_pyremn[i].col() << "," << HH_pyremn[i].acol() << std::endl;
-      }
-
 	    //running remaining partons through PYTHIA8 string fragmentation
 	    run_successfully = invoke_py();
 
@@ -739,7 +703,7 @@ void HybridHadronization::DoHadronization(vector<vector<shared_ptr<Parton>>>& sh
 		    int lab = (pos_ptn == 0) ? -1 : 1 ;
 	  	  int idH = HH_hadrons[iHad].id(); double mH = HH_hadrons[iHad].mass();
 		    FourVector p(HH_hadrons[iHad].P()); FourVector x(HH_hadrons[iHad].pos());
-		    hOut.push_back(std::make_shared<Hadron> (Hadron (stat,idH,lab,p,x,mH)));
+		    hOut.push_back(std::make_shared<Hadron> (Hadron (lab,idH,stat,p,x,mH)));
 	    }
     }
     //JSINFO<<"#Showers hadronized together: " << shower.size() << " ( " << num_strings << " initial strings ). There are " <<
@@ -4304,11 +4268,11 @@ void HybridHadronization::findcloserepl_glu(HHparton ptn, int iptn, bool lbt, bo
 //TODO: this might be where to use thermal partons to enforce color neutrality
 void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_collection& SP_prepremn, bool cutstr){
   //dignostic measure
-  std::cout <<endl<<"below is all the colors in the Tempjunction lists"<<endl;
+  /*std::cout <<endl<<"below is all the colors in the Tempjunction lists"<<endl;
   for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
     std::cout <<" { "<<Tempjunctions.at(ijunc).at(0).at(0)<<" , "<<Tempjunctions.at(ijunc).at(1).at(1)<<" , "<<Tempjunctions.at(ijunc).at(2).at(1)<<" , "<<Tempjunctions.at(ijunc).at(3).at(1)<<" } "<<endl;
     std::cout <<"col/acol: (" << Tempjunctions.at(ijunc).at(1).at(0) << "," << Tempjunctions.at(ijunc).at(2).at(0) << "," << Tempjunctions.at(ijunc).at(3).at(0) << ")" << std::endl;
-  }
+}*/
   //Declare essential vectors for string repair
   vector<vector<vector<HHparton>>> JuncStructure;
   vector<vector<HHparton>> JuncLegs; // vector of all junction ( Junction Num, Leg1, Leg2, Leg3)
@@ -4352,11 +4316,6 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
   vector<int> IdColInfo3;
   vector<int> IdColInfo4;
   */
-
-  JSINFO << "SP_remnants before stringprep:";
-  for(int irem=0; irem < SP_remnants.num(); ++irem) {
-    std::cout << SP_remnants[irem].id() << "," << SP_remnants[irem].col() << "," << SP_remnants[irem].acol() << std::endl;
-  }
 
   // Tempjunctions missing partons? Add thermal or fake
   // find the maximum (anti-)color tag in the remnants list and the tempjunctions
@@ -6333,7 +6292,7 @@ bool HybridHadronization::invoke_py(){
         || (dijuncflag == 2 && abs(HH_pyremn[i-1].id()) < 100)) {
         size_input = event.size()-1;
         //event.listJunctions();
-        event.list();
+        //event.list();
         case1 &= pythia.next();
         //event.list();
         set_spacetime_for_pythia_hadrons(event,size_input,eve_to_had,attempt,case1);
@@ -6352,7 +6311,7 @@ bool HybridHadronization::invoke_py(){
         // hadronize event here (which is only one dijunction); need to copy all the code that calls pythia AND refers to event.xxx up here
         size_input = event.size()-1;
         //event.listJunctions();
-        event.list();
+        //event.list();
         case2 &= pythia.next();
         //event.list();
         set_spacetime_for_pythia_hadrons(event,size_input,eve_to_had,attempt,case2);
@@ -6407,7 +6366,7 @@ bool HybridHadronization::invoke_py(){
 		//make PYTHIA hadronize this event, if it fails then retry N=10 times... (PYTHIA can and will rarely fail, without concern)
 		//if this fails more than 10 times, we may retry this event starting back before recombination (some number of times)
     //event.listJunctions();
-    event.list();
+    //event.list();
     case3 &= pythia.next();
     //event.list();
     set_spacetime_for_pythia_hadrons(event,size_input,eve_to_had,attempt,case3);
@@ -6713,9 +6672,9 @@ void HybridHadronization::set_spacetime_for_pythia_hadrons(Pythia8::Event &event
       }
       if(!info_found){
         compute_more_precise_positions = false;
-        JSWARN << "Could not find spacetime information for hadron in pythia event (string fragmentation attempt = "
+        /*JSWARN << "Could not find spacetime information for hadron in pythia event (string fragmentation attempt = "
               << pythia_attempt << "), had_col/acol = (" << hadron_col << "," << hadron_acol << ") , col_known = ("
-              << col_known << "," << acol_known << ")";
+              << col_known << "," << acol_known << ")";*/
 			  hadron_out.x(0.); hadron_out.y(0.); hadron_out.z(0.); hadron_out.x_t(0.);
       }
 
