@@ -795,6 +795,8 @@ Inside docker container, run
 pip3 install corner pyDOE
 pip3 install --upgrade emcee==3.0.2
 pip3 install --upgrade seaborn==0.11.0
+pip3 install jupyterlab==3.0.0 tornado==6.1
+
 ```
 to install some extra python packages needed for the Bayesian part of the school.  The above only needs be done once.
 
