@@ -12,6 +12,7 @@ If you encounter any problems feel free to contact us on slack in the [# july27-
     - i. Goals
 - **Part II: Get ready for the hadronization session**
 - **Part III: Run some simulations for the session**
+    - i. $e^+e^-$
 
 
 # Part I: Introduction
@@ -60,5 +61,33 @@ pip3 install sparkx
 ```
 > Note: The documentation (including many examples) of the sparkx package is available under this [link](https://smash-transport.github.io/sparkx/).
 
-# Part III: Run some simulations for the session
- more to come ...
+# Part III: Run simulations for the session
+
+To prepare for the hands on session it would be great, if you can run some simulations before the session starts to generate datasets we can analyze.
+
+Go to the `~/X-SCAPE/build/` directory and create a directory called `hadronization_results`.
+
+## i. $e^+e^-$
+Inside the `~/X-SCAPE/build/` directory run:
+```
+./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_epem.xml
+```
+The simulation of 10000 $e^+e^-$ events will run for up to $\approx 4$ minutes, depending on your system.
+
+## ii. Brick simulations
+```
+./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_brick_hybrid_2fm.xml
+./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_brick_hybrid_4fm.xml
+```
+The simulation of 1000 jets in a 2 / 4 fm brick will run for up to $\approx 5 / 9$ minutes, depending on your system.
+
+```
+./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_brick_colorless_2fm.xml
+```
+The simulation of 1000 jets in colorless hadronization will run for up to $\approx 7$ minutes, depending on your system.
+
+:warning: For the analysis with the sparkx package we have to modify the X-SCAPE output a bit, as the package is designed to read Jetscape output at the moment. In future updates it will be adapted to the X-SCAPE output as well. For the moment please run the following script in `~/SummerSchool2023/Jul27_Hadronization/` after you have done all the simulation runs:
+```
+./change_XSCAPE_hadron_output_sparkx
+```
+> Note: You can also execute the script multiple times, it will not modify the output even further.
