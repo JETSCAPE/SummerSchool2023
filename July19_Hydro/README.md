@@ -523,7 +523,7 @@ By changing parameters in the `input`, users can plot the string distributions a
 
 > Note: We will be running the following command lines in directory: `X-SCAPE/build`
 
-Open a new terminal, and get inside the docker container with a different name.
+Open a **new** terminal, and get inside the docker container with a different name.
 Launch jupyter notebook inside the docker contain with the following command
 in our working directory (**`~/X-SCAPE/build`**),
 
