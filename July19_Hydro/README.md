@@ -745,7 +745,7 @@ The folder `script` contains two short scripts, `main_get_hard_hadron_yield.cc` 
 
 ```bash
 g++ -o Get_Soft main_get_soft_hadron_yield.cc
-g++ -o Get_Hard main_get_soft_hadron_yield.cc
+g++ -o Get_Hard main_get_hard_hadron_yield.cc
 ```
 
 Then move the `Get_Soft` and `Get_Hard` executable files into the `build` folder, and run them by 
