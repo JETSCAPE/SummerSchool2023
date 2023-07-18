@@ -522,8 +522,8 @@ By changing parameters in the `input`, users can plot the string distributions a
 ## ii. Visualization with Jupyter Notebook
 
 > Note: We will be running the following command lines in directory: `X-SCAPE/build`
-
-Launch jupyter notebook inside the docker contain with the following command
+ If you have already installed the python modules `matplotlib` and `scipy` in your own computer, then you just open a new terminal, and run the command `jupyter notebook` to launch the jupyter notebook. If you haven't installed them, you can 
+launch jupyter notebook inside the docker contain with the following command
 in our working directory (**`~/X-SCAPE/build`**),
 
 ```
