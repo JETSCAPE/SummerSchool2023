@@ -1,6 +1,6 @@
-# Preparation for the hands-on session on hadronization
+# Hands-on session on hadronization
 
-Please read and complete **all** of the instructions in **Part I-III** carefully **before** the hands-on session on Jul 27.
+:exclamation: Please read and complete **all** of the instructions in **Part I-III** carefully **before** the hands-on session on Jul 27.
 
 > Note: It might be a good idea to follow **Part I-III** after the RIVET sessions on Jul 26, as for the hadronization a large part of the framework will be modified (see :warning: below).
 
@@ -10,10 +10,11 @@ If you encounter any problems feel free to contact us on slack in the [# july27-
 - **Part I: Introduction**
     - i. Background
     - i. Goals
-- **Part II: Get ready for the hadronization session**
-- **Part III: Run some simulations for the session**
+- **Part II: Get ready**
+- **Part III: Run Simulations**
     - i. $e^+e^-$
-    - ii. Brick simulations
+    - ii. Brick
+- **Part IV: Hands-on Session**
 
 
 # Part I: Introduction
@@ -36,7 +37,7 @@ In this hands-on session we will mainly use the hybrid hadronization module.
 - We will simulate $e^+e^-$ collisions and we will investigate different observables in systems without a medium.
 - Simulations with a jet in a brick hydro medium will be used to compare the different hydronization modules.
 
-# Part II: Get ready for the hadronization session
+# Part II: Get Ready
 
 As mentioned above, the hybrid hadronization module is currently under development, so it is not part of the X-SCAPE 1.0 release used for the summer school.
 Please make sure to follow the next steps carefully, which will implement the current version of the hybrid hadronization module in the X-SCAPE 1.0 code.
@@ -62,7 +63,7 @@ pip3 install sparkx
 ```
 > Note: The documentation (including many examples) of the sparkx package is available under this [link](https://smash-transport.github.io/sparkx/).
 
-# Part III: Run simulations for the session
+# Part III: Run Simulations
 
 To prepare for the hands on session it would be great, if you can run some simulations before the session starts to generate datasets we can analyze.
 
@@ -75,7 +76,7 @@ Inside the `~/X-SCAPE/build/` directory run:
 ```
 The simulation of 10000 $e^+e^-$ events will run for up to $\approx 4$ minutes, depending on your system.
 
-## ii. Brick simulations
+## ii. Brick
 ```
 ./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_brick_hybrid_2fm.xml
 ./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_brick_hybrid_4fm.xml
@@ -87,11 +88,8 @@ The simulation of 1000 jets in a 2 / 4 fm brick will run for up to $\approx 5 / 
 ```
 The simulation of 1000 jets in colorless hadronization will run for up to $\approx 7$ minutes, depending on your system.
 
-:warning: For the analysis with the sparkx package we have to modify the X-SCAPE output a bit, as the package is designed to read Jetscape output at the moment. In future updates it will be adapted to the X-SCAPE output as well. For the moment please run the following script in `~/SummerSchool2023/Jul27_Hadronization/` after you have done all the simulation runs:
-```
-./change_XSCAPE_hadron_output_sparkx.sh
-```
-> Note: You can also execute the script multiple times, it will not modify the output even further.
+# Part IV: Hands-on Session
 
-# Part IV: Hands-on session
+## Jupyter Notebooks
+
 Information on the jupyter notebooks...
