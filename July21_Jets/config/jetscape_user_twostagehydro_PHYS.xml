@@ -54,7 +54,7 @@
   <!-- Hydro  Module 1 -->
   <Hydro>
     <MUSIC>
-      <output_evolution_to_file>2</output_evolution_to_file>
+      <output_evolution_to_file>1</output_evolution_to_file>
       <InitialProfile>42</InitialProfile>
       <name>MUSIC_1</name>
       <freezeout_temperature>0.150</freezeout_temperature>
