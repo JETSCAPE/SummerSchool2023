@@ -79,6 +79,8 @@ The simulation of 10000 $e^+e^-$ events will run for up to $\approx 4$ minutes, 
 ## ii. Brick
 ```
 ./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_brick_hybrid_2fm.xml
+```
+```
 ./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_brick_hybrid_4fm.xml
 ```
 The simulation of 1000 jets in a 2 / 4 fm brick will run for up to $\approx 6 / 12$ minutes, depending on your system.

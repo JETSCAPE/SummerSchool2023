@@ -693,9 +693,6 @@ void HybridHadronization::DoHadronization(vector<vector<shared_ptr<Parton>>>& sh
 
     for(unsigned int iHad=0; iHad<HH_hadrons.num(); ++iHad){
 	    if(HH_hadrons[iHad].is_final()){
-        if(std::isnan(HH_hadrons[iHad].e())){
-          exit(1);
-        }
 		    //setting status flag =>  XY -> x=1 reco, x=2 frag; y=1 sh-sh, y=2 sh-th; neg sign means negative hadron
 		    int stat = (HH_hadrons[iHad].is_recohad()) ? 10 : 20;
   		  stat += (HH_hadrons[iHad].is_shth()) ? 2 : 1;

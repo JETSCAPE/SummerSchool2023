@@ -3,7 +3,7 @@
   <nEvents> 1000 </nEvents>
   <vlevel> 0 </vlevel>
 
-  <outputFilename>./hadronization_results/hadrons_brick_hybrid_baseline</outputFilename>
+  <outputFilename>./hadronization_results/hadrons_vacuum_hybrid_baseline</outputFilename>
   <JetScapeWriterFinalStateHadronsAscii> on </JetScapeWriterFinalStateHadronsAscii>
 
   <Random>

@@ -48,3 +48,9 @@ cp -r PythiaGun.cc ../../../X-SCAPE/src/initialstate/
 
 echo "replacing jetscape_main.xml"
 cp -r jetscape_main.xml ../../../X-SCAPE/config/
+
+echo "replacing JetScapeWriterFinalStateStream.xml"
+cp -r JetScapeWriterFinalStateStream.cc ../../../X-SCAPE/src/framework/
+echo "The last command overwrites a setting that ISR partons are not written, but we want the negative hadrons (negative status) here."
+echo "In the public version there will be a more elegant handling ;)"
+echo "It's recommended to execute the restore_code.sh script after the session, which brings the X-SCAPE directory back to its original state."
