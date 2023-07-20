@@ -57,6 +57,7 @@ class HybridHadronization : public HadronizationModule<HybridHadronization>
   int attempts_max;
   unsigned int rand_seed;
   int reco_hadrons_pythia;
+  int additional_pythia_particles;
   bool goldstonereco;
 
   //variables for recombination color structure
@@ -330,6 +331,7 @@ class HybridHadronization : public HadronizationModule<HybridHadronization>
 
   //used classes
   parton_collection HH_shower, HH_thermal;
+  parton_collection HH_recomb_extrapartons;
   parton_collection HH_showerptns, HH_remnants, HH_pyremn;
   hadron_collection HH_hadrons, HH_pythia_hadrons;
 

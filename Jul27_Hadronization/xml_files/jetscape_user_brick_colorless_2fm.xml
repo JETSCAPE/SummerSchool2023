@@ -63,7 +63,8 @@
   <!-- Jet Hadronization Module -->
   <JetHadronization>
     <name>colorless</name>
-    <weak_decays>off</weak_decays>
+    <pythia_decays>on</pythia_decays> <!-- lets the particles given to pythia decay-->
+    <tau0Max>10.0</tau0Max> <!-- only particles with tau0 < tau0Max (given in mm/c) can decay, increase to include weak decays-->
     <!--eCMforHadronization only for pp collisions-->
     <!--in hybrid put the full eCM here, this is distributed to the beam partons-->
     <eCMforHadronization>0</eCMforHadronization>

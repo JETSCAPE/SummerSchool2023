@@ -296,10 +296,22 @@ void HybridHadronization::InitTask(){
     // Don't let pi0 decay
     //pythia.readString("111:mayDecay = off");
 
-    // Don't let any hadron decay
-    //pythia.readString("HadronLevel:Decay = off");
+    std::string pythia_decays = GetXMLElementText({"JetHadronization", "pythia_decays"});
+    double tau0Max = 10.0;
+    xml_doublein = GetXMLElementDouble({"JetHadronization", "tau0Max"});
+	  if(xml_doublein >= 0){tau0Max = xml_doublein;} xml_doublein = -1;
+    if(pythia_decays == "on"){
+      JSINFO << "Pythia decays are turned on for tau0Max < " << tau0Max;
+      pythia.readString("HadronLevel:Decay = on");
+      pythia.readString("ParticleDecays:limitTau0 = on");
+      pythia.readString("ParticleDecays:tau0Max = " + std::to_string(tau0Max));
+    } else {
+      JSINFO << "Pythia decays are turned off";
+      pythia.readString("HadronLevel:Decay = off");
+    }
 
-    std::string weak_decays = GetXMLElementText({"JetHadronization", "weak_decays"});
+
+    /*std::string weak_decays = GetXMLElementText({"JetHadronization", "weak_decays"});
     if (weak_decays == "off"){
       JSINFO << "Weak decays are turned off";
       pythia.readString("HadronLevel:Decay = off");
@@ -308,7 +320,7 @@ void HybridHadronization::InitTask(){
       pythia.readString("HadronLevel:Decay = on");
       pythia.readString("ParticleDecays:limitTau0 = on");
       pythia.readString("ParticleDecays:tau0Max = 10.0");
-    }
+    }*/
 
 	  //setting seed, or using random seed
 	  pythia.readString("Random:setSeed = on");
@@ -390,7 +402,7 @@ void HybridHadronization::InitTask(){
 	  		thparton.pos_str(1);
 	  		HH_thermal.add(thparton); //adding this parton to thermal collection
 	  	}
-        }
+	  }
 	  //read in thermal partons, THEN do sibling setup...
 	  for(int i=0;i<HH_thermal.num();++i){
 	  	HH_thermal[i].sibling(i); HH_thermal[i].string_id(-i);
@@ -535,12 +547,17 @@ void HybridHadronization::DoHadronization(vector<vector<shared_ptr<Parton>>>& sh
 	    th_recofactor = 0.;//killing thermal + negative parton recombination.
       maxB_level = 0;//disable baryon recombination for negative partons
 
-      //add holes left by used thermal partons to HH_thermal
+      //add holes left by used thermal partons to HH_shower
       for(int i=0; i<HH_thermal.num(); ++i){
         if(HH_thermal[i].is_used()) {
           HH_thermal[i].is_used(false);
           HH_shower.add(HH_thermal[i]);
         }
+      }
+
+      //add Extrapartons from recomb() of hadrons to HH_shower of negative partons
+      for(int i=0; i<HH_recomb_extrapartons.num(); ++i){
+        HH_shower.add(HH_recomb_extrapartons[i]);
       }
     }
     if(HH_shower.num() == 0){continue;} //attempting to handle events/configurations with 0 partons will result in a crash
@@ -549,7 +566,7 @@ void HybridHadronization::DoHadronization(vector<vector<shared_ptr<Parton>>>& sh
     while((attempt_num < attempts_max) && (!run_successfully)){
 	    HH_showerptns = HH_shower;
 	    //clearing hadrons and remnants collections
-	    HH_hadrons.clear(); HH_remnants.clear(); HH_pyremn.clear(); HH_pythia_hadrons.clear();
+	    HH_hadrons.clear(); HH_remnants.clear(); HH_pyremn.clear(); HH_pythia_hadrons.clear(); HH_recomb_extrapartons.clear();
 
 	    //since we 'might' need to reset the thermal partons (if present!)... because we alter the thermal parton collection in the string repair routine
 	    for(int i=0; i<HH_thermal.num(); ++i){
@@ -641,6 +658,9 @@ void HybridHadronization::DoHadronization(vector<vector<shared_ptr<Parton>>>& sh
           HH_hadrons.clear();
         }
 
+        double E_reco = 0.;
+        for(int iPart=0; iPart<HH_hadrons.num(); ++iPart){E_reco += HH_hadrons[iPart].e();}
+
         //add all fragmentation hadrons from pythia to HH_hadrons, now that pythia hadronization was successfull
         for(int iHad = 0; iHad < HH_pythia_hadrons.num(); iHad++) {
           HH_hadrons.add(HH_pythia_hadrons[iHad]);
@@ -648,31 +668,8 @@ void HybridHadronization::DoHadronization(vector<vector<shared_ptr<Parton>>>& sh
 
         bring_hadrons_to_mass_shell(HH_hadrons);
 
-		    //partons that have parh set need to have the reco parents of that hadron
-		    //partons that do not have parh set need to have the parents vector reset to the original shower/thermal partons
-		    //until this is done, the par(i) for each parton is *wrong*
+        //hadron propagation (neglect the photons)
 		    for(int iHad=0; iHad<HH_hadrons.num(); ++iHad){
-			    //final state string_frag hadron
-			    /*if((HH_hadrons[iHad].is_final()) && (HH_hadrons[iHad].parh() == -1) && (HH_hadrons[iHad].parents.size() > 0)){
-				    std::vector<int> py_remn_parents = HH_hadrons[iHad].parents; HH_hadrons[iHad].parents.clear();
-				    //just making sure that we got all the partons from the parent string as parents (if there were junctions, this might not have been complete)
-				    for(int i=0;i<HH_pyremn.num();++i){if((HH_pyremn[i].string_id() == HH_pyremn[py_remn_parents[0]].string_id()) && (HH_pyremn[i].orig() != -1)){py_remn_parents.push_back(i);}}
-				    std::sort(py_remn_parents.begin(), py_remn_parents.end()); py_remn_parents.erase(std::unique(py_remn_parents.begin(), py_remn_parents.end()), py_remn_parents.end());
-				    std::vector<int> temp;
-				    for(int i=0;i<py_remn_parents.size();++i){temp.push_back(HH_pyremn[py_remn_parents[i]].par());}
-				    std::sort(temp.begin(), temp.end()); temp.erase(std::unique(temp.begin(), temp.end()), temp.end());
-				    for(int i=0;i<temp.size();++i){if(temp[i]<-1){++temp[i];} else if(temp[i]==-1){temp[i]=-99999;}}
-				    HH_hadrons[iHad].parents = temp;
-
-				    //a last check to make sure that any strings with junctions and thermal partons are accounted for
-				    for(int ipar=0;ipar<py_remn_parents.size();++ipar){if(HH_pyremn[py_remn_parents[ipar]].is_thermal()){HH_hadrons[iHad].is_shth(true);HH_hadrons[iHad].is_shsh(false);break;}}
-			    }
-			    //final state reco hadron
-			    else if((HH_hadrons[iHad].is_final()) && (HH_hadrons[iHad].parh() >= 0) && (HH_hadrons[iHad].parh() < HH_hadrons.num()) && (HH_hadrons[iHad].parh() != iHad)){
-				    HH_hadrons[iHad].parents = HH_hadrons[HH_hadrons[iHad].parh()].parents;
-			    }*/
-
-  			  //hadron propagation (neglect the photons)
 	  		  if(std::abs(had_prop) > 0.0001 && HH_hadrons[iHad].id() != 22){ //assumes that hadron will be propagated by more than 0.0001 fm/c in lab frame - can even propagate backwards, if that's something wanted...
 		  		  double vel[3]; vel[0]=HH_hadrons[iHad].px()/HH_hadrons[iHad].e(); vel[1]=HH_hadrons[iHad].py()/HH_hadrons[iHad].e(); vel[2]=HH_hadrons[iHad].pz()/HH_hadrons[iHad].e();
 			  	  double t_prop = had_prop/sqrt(1. - vel[0]*vel[0] - vel[1]*vel[1] - vel[2]*vel[2]);
@@ -696,6 +693,9 @@ void HybridHadronization::DoHadronization(vector<vector<shared_ptr<Parton>>>& sh
 
     for(unsigned int iHad=0; iHad<HH_hadrons.num(); ++iHad){
 	    if(HH_hadrons[iHad].is_final()){
+        if(std::isnan(HH_hadrons[iHad].e())){
+          exit(1);
+        }
 		    //setting status flag =>  XY -> x=1 reco, x=2 frag; y=1 sh-sh, y=2 sh-th; neg sign means negative hadron
 		    int stat = (HH_hadrons[iHad].is_recohad()) ? 10 : 20;
   		  stat += (HH_hadrons[iHad].is_shth()) ? 2 : 1;
@@ -706,8 +706,6 @@ void HybridHadronization::DoHadronization(vector<vector<shared_ptr<Parton>>>& sh
 		    hOut.push_back(std::make_shared<Hadron> (Hadron (lab,idH,stat,p,x,mH)));
 	    }
     }
-    //JSINFO<<"#Showers hadronized together: " << shower.size() << " ( " << num_strings << " initial strings ). There are " <<
-    //hOut.size() << " hadrons and " << pOut.size() << " partons after Hybrid Hadronization";
 	  th_recofactor = tmp_threco;
     maxB_level = tmp_maxB_level;
 	}
@@ -950,8 +948,6 @@ void HybridHadronization::recomb(){
 
   //parton list for treating thermal siblings for string repair
   parton_collection Extraparton;
-
-  std::vector<int> fakepartoninfo;
 
 	//declaring a few needed values (based on values in init)
 	double hbarc2 = hbarc*hbarc;
@@ -1837,84 +1833,12 @@ void HybridHadronization::recomb(){
           //TODO:Starting point of the string repair after Baryon Formation!
 			    double mult = (considering[1].is_thermal() || considering[2].is_thermal()) ? th_recofactor : sh_recofactor;
 		 	    if(WigB[1]*recofactor3*mult >= rndbaryon){
-				    //if(rndbaryon >= 0.99){
-              /*This Variables are in header file
-              vector<vector<vector<int>>> Tempjunctions; // vector of all tempjunctions
-              vector<vector<int>> JunctionInfo; // vector of one junction's color tag(3) and particle info
-              vector<int> IdColInfo1;
-              vector<int> IdColInfo2;
-              vector<int> IdColInfo3;
-              vector<int> IdColInfo4;
-              int candidateNum = 1;
-              */
-
-              /*
-              for(int ibary = 0; ibary < 3; ibary++){
-                if(HH_showerptns[0].col() > 0 && HH_showerptns[0].acol() == 0){ //check initiating particle{in this case, it's quark, so endpoint fakeparton should be anti quark}
-                  if(considering[ibary].col() == HH_showerptns[HH_showerptns.num()-1].col()){
-                    fakepartoninfo.push_back(-1);
-                    fakepartoninfo.push_back(HH_showerptns[HH_showerptns.num()-1].col());
-                    //dignostic measure
-                    std::cout <<endl<<"fake parton "<<" ( "<<fakepartoninfo.at(0)<<" , "<<fakepartoninfo.at(1)<<" ) added!"<<endl;
-                    break;
-                  }
-                }
-                else if(HH_showerptns[0].col() == 0 && HH_showerptns[0].acol() > 0){ //check initiating particle{in this case, it's anti-quark, so endpoint fakeparton should be quark}
-                if(considering[ibary].acol() == HH_showerptns[HH_showerptns.num()-1].acol()){
-                  fakepartoninfo.push_back(1);
-                  fakepartoninfo.push_back(HH_showerptns[HH_showerptns.num()-1].acol());
-                  //dignostic measure
-                  std::cout <<endl<<"fake parton "<<" ( "<<fakepartoninfo.at(0)<<" , "<<fakepartoninfo.at(1)<<" ) added!"<<endl;
-                  break;
-                }
-              } // this data will be used for appending fake partons {at the last part of recomb function, pid, pstat col, acol needed, }
-            }
-            */
 
             /*std::cout << "Baryons" << std::endl;
             std::cout << considering[0].id() << "," << considering[0].col() << "," << considering[0].acol() << std::endl;
             std::cout << considering[1].id() << "," << considering[1].col() << "," << considering[1].acol() << std::endl;
             std::cout << considering[2].id() << "," << considering[2].col() << "," << considering[2].acol() << std::endl;*/
 			      if(considering[0].id() * considering[1].id() * considering[2].id() > 0){
-              //TODO:If baryon is formed from Tempjunction, corresponding temp junction should be eliminated.
-              //std::cout <<endl<<"Baryon is made from "<<" ( "<<considering[0].col()<<" , "<<considering[1].col()<<" , "<<considering[2].col()<<" ) "<<endl;
-              //commented out for testing
-              /*for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-                if( (Tempjunctions.at(ijunc).at(1).at(1) == considering[0].col()) ||
-                    (Tempjunctions.at(ijunc).at(1).at(1) == considering[1].col()) ||
-                    (Tempjunctions.at(ijunc).at(1).at(1) == considering[2].col())){
-                  Tempjunctions.at(ijunc).at(1).pop_back();
-                  Tempjunctions.at(ijunc).at(1).push_back(9999999);
-                  Tempjunctions.at(ijunc).at(2).pop_back();
-                  Tempjunctions.at(ijunc).at(2).push_back(9999999);
-                  Tempjunctions.at(ijunc).at(3).pop_back();
-                  Tempjunctions.at(ijunc).at(3).push_back(9999999);// replace all the col tag in junction candidate with zero to preserve the size of the vector, or the code would be broken
-                }
-              }
-              for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-                if( (Tempjunctions.at(ijunc).at(2).at(1) == considering[0].col()) ||
-                  (Tempjunctions.at(ijunc).at(2).at(1) == considering[1].col()) ||
-                  (Tempjunctions.at(ijunc).at(2).at(1) == considering[2].col()) ){
-                  Tempjunctions.at(ijunc).at(1).pop_back();
-                  Tempjunctions.at(ijunc).at(1).push_back(8888888);
-                  Tempjunctions.at(ijunc).at(2).pop_back();
-                  Tempjunctions.at(ijunc).at(2).push_back(8888888);
-                  Tempjunctions.at(ijunc).at(3).pop_back();
-                  Tempjunctions.at(ijunc).at(3).push_back(8888888);// replace all the col tag in junction candidate with zero to preserve the size of the vector, or the code would be broken
-                }
-              }
-              for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-                if( (Tempjunctions.at(ijunc).at(3).at(1) == considering[0].col()) ||
-                  (Tempjunctions.at(ijunc).at(3).at(1) == considering[1].col() ||
-                  (Tempjunctions.at(ijunc).at(3).at(1) == considering[2].col())) ){
-                  Tempjunctions.at(ijunc).at(1).pop_back();
-                  Tempjunctions.at(ijunc).at(1).push_back(7777777);
-                  Tempjunctions.at(ijunc).at(2).pop_back();
-                  Tempjunctions.at(ijunc).at(2).push_back(7777777);
-                  Tempjunctions.at(ijunc).at(3).pop_back();
-                  Tempjunctions.at(ijunc).at(3).push_back(7777777);// replace all the col tag in junction candidate with zero to preserve the size of the vector, or the code would be broken
-                }
-              } // now corresponding Tempjunction vector is cleared!*/
               // baryon is to be formed, so temporary anti junction is defined
               if(considering[0].col() > 0 && considering[1].col() > 0 && considering[2].col() > 0) {
                 IdColInfo1.push_back(-1); // antijunction tag(-1)
@@ -1997,6 +1921,9 @@ void HybridHadronization::recomb(){
                 if(loc == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
@@ -2034,6 +1961,9 @@ void HybridHadronization::recomb(){
                 if(loc == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[0]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
@@ -2069,11 +1999,14 @@ void HybridHadronization::recomb(){
                 maxtag++;
                 int loc = findcloserepl(considering[1], perm2[q2], true, true, showerquarks, HH_thermal);
                 if(loc == 999999999){
-                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
-                   HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.acol(maxtag);
-                   fakep.is_fakeparton(true);
-                   Extraparton.add(fakep);
-                   //somewhere, we need to make for loop to toss all partons to remnants list.
+                  //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
+                  HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
+                  fakep.is_fakeparton(true);
+                  Extraparton.add(fakep);
+                  //somewhere, we need to make for loop to toss all partons to remnants list.
                 }
                 else if (loc > 0){showerquarks[loc - 1].acol(maxtag); }
                 else if(loc < 0){HH_thermal[-loc - 1].acol(maxtag); }
@@ -2110,6 +2043,9 @@ void HybridHadronization::recomb(){
                 if(loc1 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
@@ -2124,6 +2060,9 @@ void HybridHadronization::recomb(){
                 if(loc2 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
@@ -2153,29 +2092,37 @@ void HybridHadronization::recomb(){
                 IdColInfo1.push_back(-1); // antijunction tag(-1)
                 IdColInfo1.push_back(0); // zero(just room for the other usage) {-1, 0} will be in 1st
 
+                maxtag++;
                 int loc1 = findcloserepl(considering[0], element[0] + 1, true, true, showerquarks, HH_thermal);
                 if(loc1 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[0]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
                 }
-                else if (loc1 > 0){showerquarks[loc1 - 1].acol(++maxtag); }
-                else if(loc1 < 0){HH_thermal[-loc1 - 1].acol(++maxtag); }
+                else if (loc1 > 0){showerquarks[loc1 - 1].acol(maxtag); }
+                else if(loc1 < 0){HH_thermal[-loc1 - 1].acol(maxtag); }
                 IdColInfo3.push_back(-1);
                 IdColInfo3.push_back(maxtag);
 
+                maxtag++;
                 int loc2 = findcloserepl(considering[1], perm2[q2], true, true, showerquarks, HH_thermal);
                 if(loc2 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
                 }
-                else if (loc2 > 0){showerquarks[loc2 - 1].acol(++maxtag); }
-                else if(loc2 < 0){HH_thermal[-loc2 - 1].acol(++maxtag); }
+                else if (loc2 > 0){showerquarks[loc2 - 1].acol(maxtag); }
+                else if(loc2 < 0){HH_thermal[-loc2 - 1].acol(maxtag); }
 
                 IdColInfo4.push_back(-1);
                 IdColInfo4.push_back(maxtag);
@@ -2207,6 +2154,9 @@ void HybridHadronization::recomb(){
                 if(loc1 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[0]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
@@ -2219,16 +2169,20 @@ void HybridHadronization::recomb(){
                 IdColInfo3.push_back(-1); // means anticolor tag(negative color charge)
                 IdColInfo3.push_back(considering[1].col());// {-1, anticolor tag} will be at 2nd, 3rd, 4th
 
+                maxtag++;
                 int loc2 = findcloserepl(considering[2], perm2[q3], true, true, showerquarks, HH_thermal);
                 if(loc2 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[2]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
                 }
-                else if (loc2 > 0){showerquarks[loc2 - 1].acol(++maxtag); }
-                else if(loc2 < 0){HH_thermal[-loc2 - 1].acol(++maxtag); }
+                else if (loc2 > 0){showerquarks[loc2 - 1].acol(maxtag); }
+                else if(loc2 < 0){HH_thermal[-loc2 - 1].acol(maxtag); }
                 IdColInfo4.push_back(-1);
                 IdColInfo4.push_back(maxtag);
                 //TODO: give thermal partons "ANTI COLOR TAGS" to form anti junction and conserve baryon number.
@@ -2248,34 +2202,62 @@ void HybridHadronization::recomb(){
 
               } // so far, we are finished with the list with two zeros
 
-              /*
+
               if(considering[0].col() == 0 && considering[1].col() == 0 && considering[2].col() == 0){ //  Therm/LBT + Therm/LBT + MAT case
                 IdColInfo1.push_back(-1); // antijunction tag(-1)
                 IdColInfo1.push_back(0); // zero(just room for the other usage) {-1, 0} will be in 1st
+
                 maxtag++;
                 int loc1 = findcloserepl(considering[0], element[0] + 1, true, true, showerquarks, HH_thermal);
+                if(loc1 = 999999999){
+                  //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
+                  HHparton fakep = considering[0]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
+                  fakep.is_fakeparton(true);
+                  Extraparton.add(fakep);
+                  //somewhere, we need to make for loop to toss all partons to remnants list.
+                }
                 if (loc1 > 0){showerquarks[loc1 - 1].acol(maxtag); }
                 else if(loc1 < 0){HH_thermal[-loc1 - 1].acol(maxtag); }
                 IdColInfo2.push_back(-1);
                 IdColInfo2.push_back(maxtag);
+
                 maxtag++;
                 int loc2 = findcloserepl(considering[1], perm2[q2], true, true, showerquarks, HH_thermal);
                 if(loc2 = 999999999){
-                   std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
-                   HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.acol(maxtag);
-                   fakep.is_fakeparton(true);
-                   //Extraparton collection.add{fakep};
-                   //somewhere, we need to make for loop to toss all partons to remnants list.
+                  //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
+                  HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
+                  fakep.is_fakeparton(true);
+                  Extraparton.add(fakep);
+                  //somewhere, we need to make for loop to toss all partons to remnants list.
                 }
                 if (loc2 > 0){showerquarks[loc2 - 1].acol(maxtag); }
                 else if(loc2 < 0){HH_thermal[-loc2 - 1].acol(maxtag); }
                 IdColInfo3.push_back(-1);
                 IdColInfo3.push_back(maxtag);
+
+                maxtag++;
                 int loc3 = findcloserepl(considering[2], perm2[q3], true, true, showerquarks, HH_thermal);
-                if (loc3 > 0){showerquarks[loc3 - 1].acol(++maxtag); }
-                else if(loc3 < 0){HH_thermal[-loc3 - 1].acol(++maxtag); }
+                if(loc3 = 999999999){
+                  //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
+                  HHparton fakep = considering[2]; fakep.id(-fakep.id());  fakep.acol(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
+                  fakep.is_fakeparton(true);
+                  Extraparton.add(fakep);
+                  //somewhere, we need to make for loop to toss all partons to remnants list.
+                }
+                if (loc3 > 0){showerquarks[loc3 - 1].acol(maxtag); }
+                else if(loc3 < 0){HH_thermal[-loc3 - 1].acol(maxtag); }
                 IdColInfo4.push_back(-1);
                 IdColInfo4.push_back(maxtag);
+
                 //TODO: give thermal partons "ANTI COLOR TAGS" to form anti junction and conserve baryon number.
                 JunctionInfo.push_back(IdColInfo1);
                 JunctionInfo.push_back(IdColInfo2);
@@ -2288,7 +2270,6 @@ void HybridHadronization::recomb(){
                 IdColInfo4.clear();
                 JunctionInfo.clear();
               } // so far, we are finished with the list with three zeros
-              */
             }
             else if(considering[0].id() * considering[1].id() * considering[2].id() < 0){ //anti baryon would be made so temporary junction is defined
               int col1 = HH_showerptns[showerquarks[element[0]].par()].acol();
@@ -2304,43 +2285,6 @@ void HybridHadronization::recomb(){
               //std::cout <<endl<<"Anti Baryon is made from "<<" ( "<<considering[0].acol()<<" , "<<considering[1].acol()<<" , "<<considering[2].acol()<<" ) "<<endl;
               //  std::cout <<endl<<"Anti Baryon is made from "<<" ( "<<HH_showerptns[showerquarks[element[0]].par()].acol()<<" , "<<HH_showerptns[showerquarks[element[1]].par()].acol()<<" , "<<HH_showerptns[showerquarks[element[2]].par()].acol()<<" ) "<<endl;
 
-              // commented out for testing
-              /*for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-                if( (Tempjunctions.at(ijunc).at(1).at(1) == considering[0].acol()) ||
-                  (Tempjunctions.at(ijunc).at(1).at(1) == considering[1].acol()) ||
-                  (Tempjunctions.at(ijunc).at(1).at(1) == considering[2].acol())){
-                  Tempjunctions.at(ijunc).at(1).pop_back();
-                  Tempjunctions.at(ijunc).at(1).push_back(9999999);
-                  Tempjunctions.at(ijunc).at(2).pop_back();
-                  Tempjunctions.at(ijunc).at(2).push_back(9999999);
-                  Tempjunctions.at(ijunc).at(3).pop_back();
-                  Tempjunctions.at(ijunc).at(3).push_back(9999999); // replace all the col tag in junction candidate to preserve the size of the vector, or the code would be broken
-                }
-              }
-              for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-                if( (Tempjunctions.at(ijunc).at(2).at(1) == considering[0].acol()) ||
-                  (Tempjunctions.at(ijunc).at(2).at(1) == considering[1].acol()) ||
-                  (Tempjunctions.at(ijunc).at(2).at(1) == considering[2].acol()) ){
-                  Tempjunctions.at(ijunc).at(1).pop_back();
-                  Tempjunctions.at(ijunc).at(1).push_back(9999999);
-                  Tempjunctions.at(ijunc).at(2).pop_back();
-                  Tempjunctions.at(ijunc).at(2).push_back(9999999);
-                  Tempjunctions.at(ijunc).at(3).pop_back();
-                  Tempjunctions.at(ijunc).at(3).push_back(9999999);// replace all the col tag in junction candidate with zero to preserve the size of the vector, or the code would be broken
-                }
-              }
-              for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-                if( (Tempjunctions.at(ijunc).at(3).at(1) == considering[0].acol()) ||
-                  (Tempjunctions.at(ijunc).at(3).at(1) == considering[1].acol() ||
-                  (Tempjunctions.at(ijunc).at(3).at(1) == considering[2].acol())) ){
-                  Tempjunctions.at(ijunc).at(1).pop_back();
-                  Tempjunctions.at(ijunc).at(1).push_back(9999999);
-                  Tempjunctions.at(ijunc).at(2).pop_back();
-                  Tempjunctions.at(ijunc).at(2).push_back(9999999);
-                  Tempjunctions.at(ijunc).at(3).pop_back();
-                  Tempjunctions.at(ijunc).at(3).push_back(9999999);// replace all the col tag in junction candidate with zero to preserve the size of the vector, or the code would be broken
-                }
-              } // now corresponding Tempjunction vector is cleared!*/
               if(considering[0].acol() > 0 && considering[1].acol() > 0 && considering[2].acol() > 0){
                 IdColInfo1.push_back(1); // junction tag(-1)
                 IdColInfo1.push_back(0); // zero(just room for the other usage)   : {1, 0} at 1st
@@ -2404,6 +2348,9 @@ void HybridHadronization::recomb(){
                 if(loc == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
@@ -2441,6 +2388,9 @@ void HybridHadronization::recomb(){
                 if(loc == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[0]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
@@ -2474,10 +2424,13 @@ void HybridHadronization::recomb(){
                 IdColInfo1.push_back(0); // zero(just room for the other usage) {-1, 0} will be in 1st
 
                 maxtag++;
-                int loc = findcloserepl(considering[1], perm2[q2], true, true, showerquarks, HH_thermal);
+                int loc = findcloserepl(considering[2], perm2[q2], true, true, showerquarks, HH_thermal);
                 if(loc == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
-                  HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  HHparton fakep = considering[2]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
@@ -2517,6 +2470,9 @@ void HybridHadronization::recomb(){
                 if(loc1 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
@@ -2531,6 +2487,9 @@ void HybridHadronization::recomb(){
                 if(loc2 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[2]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
@@ -2559,29 +2518,37 @@ void HybridHadronization::recomb(){
                 IdColInfo1.push_back(1); // junction tag(1)
                 IdColInfo1.push_back(0); // zero(just room for the other usage) {-1, 0} will be in 1st
 
+                maxtag++;
                 int loc1 = findcloserepl(considering[0], element[0] + 1, true, true, showerquarks, HH_thermal);
                 if(loc1 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[0]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
                 }
-                else if (loc1 > 0){showerquarks[loc1 - 1].col(++maxtag); }
-                else if(loc1 < 0){HH_thermal[-loc1 - 1].col(++maxtag); }
+                else if (loc1 > 0){showerquarks[loc1 - 1].col(maxtag); }
+                else if(loc1 < 0){HH_thermal[-loc1 - 1].col(maxtag); }
                 IdColInfo2.push_back(1);
                 IdColInfo2.push_back(maxtag);
 
+                maxtag++;
                 int loc2 = findcloserepl(considering[1], perm2[q2], true, true, showerquarks, HH_thermal);
                 if(loc2 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
                 }
-                else if (loc2 > 0){showerquarks[loc2 - 1].col(++maxtag); }
-                else if(loc2 < 0){HH_thermal[-loc2 - 1].col(++maxtag); }
+                else if (loc2 > 0){showerquarks[loc2 - 1].col(maxtag); }
+                else if(loc2 < 0){HH_thermal[-loc2 - 1].col(maxtag); }
 
                 IdColInfo3.push_back(1);
                 IdColInfo3.push_back(maxtag);
@@ -2612,6 +2579,9 @@ void HybridHadronization::recomb(){
                 if(loc1 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[0]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
@@ -2624,16 +2594,20 @@ void HybridHadronization::recomb(){
                 IdColInfo3.push_back(1); // means anticolor tag(negative color charge)
                 IdColInfo3.push_back(considering[1].acol());// {-1, anticolor tag} will be at 2nd, 3rd, 4th
 
+                maxtag++;
                 int loc2 = findcloserepl(considering[2], perm2[q2], true, true, showerquarks, HH_thermal);
                 if(loc2 == 999999999){
                   //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
                   HHparton fakep = considering[2]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
                   fakep.is_fakeparton(true);
                   Extraparton.add(fakep);
                   //somewhere, we need to make for loop to toss all partons to remnants list.
                 }
-                else if (loc2 > 0){showerquarks[loc2 - 1].col(++maxtag); }
-                else if(loc2 < 0){HH_thermal[-loc2 - 1].col(++maxtag); }
+                else if (loc2 > 0){showerquarks[loc2 - 1].col(maxtag); }
+                else if(loc2 < 0){HH_thermal[-loc2 - 1].col(maxtag); }
                 IdColInfo4.push_back(1);
                 IdColInfo4.push_back(maxtag);
                 //TODO: give thermal partons "ANTI COLOR TAGS" to form anti junction and conserve baryon number.
@@ -2652,27 +2626,61 @@ void HybridHadronization::recomb(){
                 JunctionInfo.clear();
               } // so far, we are finished with the list with two zeros
 
-              /*
               if(considering[0].acol() == 0 && considering[1].acol() == 0 && considering[2].acol() == 0){ //  Therm/LBT + Therm/LBT + MAT case
                 IdColInfo1.push_back(1); // junction tag(1)
                 IdColInfo1.push_back(0); // zero(just room for the other usage) {1, 0} will be in 1st
+
                 maxtag++;
                 int loc1 = findcloserepl(considering[0], element[0] + 1, true, true, showerquarks, HH_thermal);
+                if(loc1 == 999999999){
+                  //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
+                  HHparton fakep = considering[0]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
+                  fakep.is_fakeparton(true);
+                  Extraparton.add(fakep);
+                  //somewhere, we need to make for loop to toss all partons to remnants list.
+                }
                 if (loc1 > 0){showerquarks[loc1 - 1].col(maxtag); }
                 else if(loc1 < 0){HH_thermal[-loc1 - 1].col(maxtag); }
                 IdColInfo2.push_back(1);
                 IdColInfo2.push_back(maxtag);
+
                 maxtag++;
                 int loc2 = findcloserepl(considering[1], perm2[q2], true, true, showerquarks, HH_thermal);
+                if(loc2 == 999999999){
+                  //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
+                  HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
+                  fakep.is_fakeparton(true);
+                  Extraparton.add(fakep);
+                  //somewhere, we need to make for loop to toss all partons to remnants list.
+                }
                 if (loc2 > 0){showerquarks[loc2 - 1].col(maxtag); }
                 else if(loc2 < 0){HH_thermal[-loc2 - 1].col(maxtag); }
                 IdColInfo3.push_back(1);
                 IdColInfo3.push_back(maxtag);
+
+                maxtag++;
                 int loc3 = findcloserepl(considering[2], perm2[q3], true, true, showerquarks, HH_thermal);
-                if (loc3 > 0){showerquarks[loc3 - 1].col(++maxtag); }
-                else if(loc3 < 0){HH_thermal[-loc3 - 1].col(++maxtag); }
+                if(loc3 == 999999999){
+                  //std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
+                  HHparton fakep = considering[2]; fakep.id(-fakep.id());  fakep.col(maxtag);
+                  fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                  fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                  fakep.e(fakep.mass());
+                  fakep.is_fakeparton(true);
+                  Extraparton.add(fakep);
+                  //somewhere, we need to make for loop to toss all partons to remnants list.
+                }
+                if (loc3 > 0){showerquarks[loc3 - 1].col(maxtag); }
+                else if(loc3 < 0){HH_thermal[-loc3 - 1].col(maxtag); }
                 IdColInfo4.push_back(1);
                 IdColInfo4.push_back(maxtag);
+
                 //TODO: give thermal partons "ANTI COLOR TAGS" to form anti junction and conserve baryon number.
                 JunctionInfo.push_back(IdColInfo1);
                 JunctionInfo.push_back(IdColInfo2);
@@ -2685,7 +2693,6 @@ void HybridHadronization::recomb(){
                 IdColInfo4.clear();
                 JunctionInfo.clear();
               } // so far, we are finished with the list with three zeros
-              */
                //dignostic measure
                /*
                std::cout <<endl<<"Meson reco Matrix revised by Baryon formation is same as below"<<endl;
@@ -3187,9 +3194,6 @@ void HybridHadronization::recomb(){
 
         //Habemus Recombinationem!
         if(angular_qnum >= 0) {
-          //TODO:confirm if the partons not used into Meson get back to the original permutation list
-          //std::cout <<endl<<"Let's find what was recombined!"<<endl<<endl;
-
           /*std::cout << "Mesons" << std::endl;
           std::cout << considering[0].id() << "," << considering[0].col() << "," << considering[0].acol() << std::endl;
           std::cout << considering[1].id() << "," << considering[1].col() << "," << considering[1].acol() << std::endl;*/
@@ -3197,44 +3201,6 @@ void HybridHadronization::recomb(){
             //std::cout <<endl<<"chosen partons are "<< int(considering[0].id()) << " and " << int(considering[1].id()) << endl <<endl;
             //std::cout <<endl<<"and their color tag is "<< int(considering[0].col()) << " and " << int(considering[1].acol()) << endl <<endl;
             //std::cout <<"color correction implemented as Follows: "<< considering[0].col() <<" = " << considering[1].acol()<<endl;
-
-            //TODO:If Meson is formed from Tempjunction, corresponding temp junction should be eliminated.
-            /*for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-              if((Tempjunctions.at(ijunc).at(1).at(1) == considering[0].col()) ||
-                 (Tempjunctions.at(ijunc).at(1).at(1) == considering[1].acol()) ){
-                Tempjunctions.at(ijunc).at(1).pop_back();
-                Tempjunctions.at(ijunc).at(1).push_back(9999999);
-                Tempjunctions.at(ijunc).at(2).pop_back();
-                Tempjunctions.at(ijunc).at(2).push_back(9999999);
-                Tempjunctions.at(ijunc).at(3).pop_back();
-                Tempjunctions.at(ijunc).at(3).push_back(9999999);
-                // replace all the col tag in junction candidate with zero to preserve the size of the vector, or the code would be broken
-              }
-            }
-            for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-              if((Tempjunctions.at(ijunc).at(2).at(1) == considering[0].col()) ||
-                  (Tempjunctions.at(ijunc).at(2).at(1) == considering[1].acol()) ){
-                Tempjunctions.at(ijunc).at(1).pop_back();
-                Tempjunctions.at(ijunc).at(1).push_back(8888888);
-                Tempjunctions.at(ijunc).at(2).pop_back();
-                Tempjunctions.at(ijunc).at(2).push_back(8888888);
-                Tempjunctions.at(ijunc).at(3).pop_back();
-                Tempjunctions.at(ijunc).at(3).push_back(8888888);
-                // replace all the col tag in junction candidate with zero to preserve the size of the vector, or the code would be broken
-              }
-            }
-            for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-              if( (Tempjunctions.at(ijunc).at(3).at(1) == considering[0].col()) ||
-                  (Tempjunctions.at(ijunc).at(3).at(1) == considering[1].acol()) ){
-                Tempjunctions.at(ijunc).at(1).pop_back();
-                Tempjunctions.at(ijunc).at(1).push_back(7777777);
-                Tempjunctions.at(ijunc).at(2).pop_back();
-                Tempjunctions.at(ijunc).at(2).push_back(7777777);
-                Tempjunctions.at(ijunc).at(3).pop_back();
-                Tempjunctions.at(ijunc).at(3).push_back(7777777);
-                // replace all the col tag in junction candidate with zero to preserve the size of the vector, or the code would be broken
-              }
-            } // now corresponding Tempjunction vector is cleared!*/
 
             // Overwrite non-dominant colortags in tempjunctions with dominant ones
             // q-qbar case
@@ -3259,8 +3225,6 @@ void HybridHadronization::recomb(){
               int loc1 = std::distance(IndiceForColFin.begin(), I1);
               int loc2 = std::distance(IndiceForColFin.begin(), I2); //set up for find matrix indices corresponding to the color tags
 
-              //MesonrecoMatrix1.at(loc1).at(loc2) = 0;
-              //MesonrecoMatrix1.at(loc2).at(loc1) = 0; //Matrix revised
 
 					    MesonrecoMatrix1.at(loc1).at(loc2) = 1;
               MesonrecoMatrix1.at(loc2).at(loc1) = 1; //Matrix revised
@@ -3286,7 +3250,6 @@ void HybridHadronization::recomb(){
               */
             }
 
-            //TODO: Need to be changed to reflect thermal parton(04232020)
             //possible case  MAT+LBT, MAT+THERM,
             //treatment 1 : based on distance.
 					  if(considering[0].col() > 0 && considering[1].acol() > 0){ //MAT/lbt or therm with color tags + MAT/lbt or therm with color tags
@@ -3307,19 +3270,15 @@ void HybridHadronization::recomb(){
 					  	if(thermsib == 999999999){
 					  		//std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
 					  		HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.col(considering[0].col());
+                fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                fakep.e(fakep.mass());
                 fakep.is_fakeparton(true);
 					  		Extraparton.add(fakep);
 					  		//somewhere, we need to make for loop to toss all partons to remnants list.
 					  	}
 					  	else if(thermsib < 0){HH_thermal[-thermsib-1].col(considering[0].col());}
 					  	else{showerquarks[thermsib-1].col(considering[0].col());
-					  		/*for(int ishq=0;ishq<showerquarks.num();++ishq){
-					  			if(!showerquarks[ishq].is_used() && showerquarks[ishq].col()==HH_showerptns[thermsib-1].acol()){showerquarks[ishq].col(considering[0].col());}
-					  		}
-					  		for(int ishq=0;ishq<HH_showerptns.num();++ishq){
-					  			if(HH_showerptns[ishq].col()==HH_showerptns[thermsib-1].acol()){if(ishq==thermsib-1){continue;} HH_showerptns[ishq].col(considering[0].col());}
-					  		}//[**]
-					  		HH_showerptns[thermsib-1].acol(considering[0].col());*/
 					  	}
 					  }
 					  else if(considering[1].acol() > 0){ //LBT + MAT
@@ -3327,19 +3286,15 @@ void HybridHadronization::recomb(){
 					  	if(thermsib == 999999999){
 					  		//std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
 					  		HHparton fakep = considering[0]; fakep.id(-fakep.id());  fakep.acol(considering[1].acol());
+                fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                fakep.e(fakep.mass());
                 fakep.is_fakeparton(true);
 					  		Extraparton.add(fakep);
 					  		//somewhere, we need to make for loop to toss all partons to remnants list.
 					  	}
 					  	else if(thermsib < 0){HH_thermal[-thermsib-1].acol(considering[1].acol());}
 					  	else{showerquarks[thermsib-1].acol(considering[1].acol());
-					  		/*for(int ishq=0;ishq<showerquarks.num();++ishq){
-					  			if(!showerquarks[ishq].is_used() && showerquarks[ishq].acol()==HH_showerptns[thermsib-1].col()){showerquarks[ishq].acol(considering[1].acol());}
-					  		}
-					  		for(int ishq=0;ishq<HH_showerptns.num();++ishq){
-					  			if(HH_showerptns[ishq].acol()==HH_showerptns[thermsib-1].col()){if(ishq==thermsib-1){continue;} HH_showerptns[ishq].acol(considering[1].acol());}
-					  		}//[**]
-					  		HH_showerptns[thermsib-1].col(considering[1].acol());*/
 					  	}
 					  }
 				  }
@@ -3347,43 +3302,6 @@ void HybridHadronization::recomb(){
             //std::cout <<endl<<"chosen partons are "<< int(considering[0].id()) << " and " << int(considering[1].id()) << endl <<endl;
             //std::cout <<endl<<"and their color tag is "<< int(considering[0].acol()) << " and " << int(considering[1].col()) << endl <<endl;
             //std::cout <<"color correction implemented as Follows: "<< considering[0].acol()<<" = "<<considering[1].col()<<endl;
-
-            /*for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-              if( (Tempjunctions.at(ijunc).at(1).at(1) == considering[0].acol()) ||
-                  (Tempjunctions.at(ijunc).at(1).at(1) == considering[1].col()) ){
-                Tempjunctions.at(ijunc).at(1).pop_back();
-                Tempjunctions.at(ijunc).at(1).push_back(9999999);
-                Tempjunctions.at(ijunc).at(2).pop_back();
-                Tempjunctions.at(ijunc).at(2).push_back(9999999);
-                Tempjunctions.at(ijunc).at(3).pop_back();
-                Tempjunctions.at(ijunc).at(3).push_back(9999999);
-                // replace all the col tag in junction candidate with zero to preserve the size of the vector, or the code would be broken
-              }
-            }
-            for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-              if( (Tempjunctions.at(ijunc).at(2).at(1) == considering[0].acol()) ||
-                  (Tempjunctions.at(ijunc).at(2).at(1) == considering[1].col()) ){
-                Tempjunctions.at(ijunc).at(1).pop_back();
-                Tempjunctions.at(ijunc).at(1).push_back(9999999);
-                Tempjunctions.at(ijunc).at(2).pop_back();
-                Tempjunctions.at(ijunc).at(2).push_back(9999999);
-                Tempjunctions.at(ijunc).at(3).pop_back();
-                Tempjunctions.at(ijunc).at(3).push_back(9999999);
-                // replace all the col tag in junction candidate with zero to preserve the size of the vector, or the code would be broken
-              }
-            }
-            for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
-              if( (Tempjunctions.at(ijunc).at(3).at(1) == considering[0].acol()) ||
-                  (Tempjunctions.at(ijunc).at(3).at(1) == considering[1].col()) ){
-                Tempjunctions.at(ijunc).at(1).pop_back();
-                Tempjunctions.at(ijunc).at(1).push_back(9999999);
-                Tempjunctions.at(ijunc).at(2).pop_back();
-                Tempjunctions.at(ijunc).at(2).push_back(9999999);
-                Tempjunctions.at(ijunc).at(3).pop_back();
-                Tempjunctions.at(ijunc).at(3).push_back(9999999);
-                // replace all the col tag in junction candidate with zero to preserve the size of the vector, or the code would be broken
-              }
-            } // now corresponding Tempjunction vector is cleared!*/
 
             // Overwrite non-dominant colortags in tempjunctions with dominant ones
             // qbar-q case
@@ -3408,9 +3326,6 @@ void HybridHadronization::recomb(){
               int loc1 = std::distance(IndiceForColFin.begin(), I1);
               int loc2 = std::distance(IndiceForColFin.begin(), I2); //set up for find matrix indices corresponding to the color tags
 
-              //MesonrecoMatrix1.at(loc1).at(loc2) = 0;
-              //MesonrecoMatrix1.at(loc2).at(loc1) = 0; //Matrix revised
-
 					    MesonrecoMatrix1.at(loc1).at(loc2) = 1;
               MesonrecoMatrix1.at(loc2).at(loc1) = 1; //Matrix revised
 
@@ -3432,20 +3347,8 @@ void HybridHadronization::recomb(){
                 std::cout <<"  "<<MesonrecoMatrix1.at(irow).at(icol)<<"  ";
               }
               std::cout <<endl<<endl;
-            }
-            int loc = findcloserepl(HH_showerptns[i], i+1, true, true, HH_showerptns, HH_thermal );
-            if(loc == 999999999){
-              std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
-              HHparton fakep = HH_showerptns[i]; fakep.id(-fakep.id());  fakep.acol(++maxtag);
-              fakep.is_fakeparton(true);
-              Extraparton.add(fakep);
-              //somewhere, we need to make for loop to toss all partons to remnants list.
-            }
-            else if (loc > 0){HH_showerptns[loc - 1].acol(++maxtag); }
-            else if(loc < 0){HH_thermal[-loc - 1].acol(++maxtag); }
-            HH_showerptns[i].col(maxtag);
-            }
-            */ //TODO:NEED TO BE DEALT IN THERMAL PARTON PROCESSING{04232020}
+            }*/
+            //TODO:NEED TO BE DEALT IN THERMAL PARTON PROCESSING{04232020}
 					  if(considering[0].acol() > 0 && considering[1].col() > 0){ //MAT + MAT
 					  	if(perm2[q2] > 0){
 					  		HH_showerptns[showerquarks[element[1]].par()].col(considering[0].acol());//now color tags from both partons are same
@@ -3464,51 +3367,30 @@ void HybridHadronization::recomb(){
 					  	if(loc == 999999999){
 					  		//std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
 					  		HHparton fakep = considering[1]; fakep.id(-fakep.id());  fakep.acol(considering[0].acol());
+                fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                fakep.e(fakep.mass());
                 fakep.is_fakeparton(true);
 					  		Extraparton.add(fakep);
 					  		//somewhere, we need to make for loop to toss all partons to remnants list.
 					  	}
-						  else if (loc > 0){showerquarks[loc-1].acol(considering[0].acol());
-							  /*for(int ishq=0;ishq<showerquarks.num();++ishq){
-							  	if(!showerquarks[ishq].is_used() && showerquarks[ishq].acol()==HH_showerptns[loc-1].col()){showerquarks[ishq].acol(considering[0].acol());}
-							  }
-							  for(int ishq=0;ishq<HH_showerptns.num();++ishq){
-							  	if(HH_showerptns[ishq].acol()==HH_showerptns[loc-1].col()){if(ishq==loc-1){continue;}HH_showerptns[ishq].acol(considering[0].acol());}
-							  }//[**]
-							  HH_showerptns[loc - 1].col(considering[0].acol());*/
-						  }
+						  else if (loc > 0){showerquarks[loc-1].acol(considering[0].acol());}
 						  else if(loc < 0){HH_thermal[-loc-1].acol(considering[0].acol());}
-						  /*
-						  int thermsib = findthermalsibling(-element[1] , HH_thermal); // functon to find
-						  if(thermsib < 0){HH_thermal[thermsib-1].col(considering[0].acol());}
-						  else{HH_showerptns[thermsib+1].col(considering[0].acol());}
-						  */
 					  }
 					  else if(considering[1].col() > 0){ //LBT + MAT
 						  int loc = findcloserepl(considering[0], perm1[q1]+1, true, true, showerquarks, HH_thermal );
 						  if(loc == 999999999){
 						  	//std::cout <<endl<<"Warning : extra parton used for string repair!!"<<endl;
 						  	HHparton fakep = considering[0]; fakep.id(-fakep.id());  fakep.col(considering[1].col());
+                fakep.mass(pythia.particleData.m0(std::abs(fakep.id())));
+                fakep.px(0.); fakep.py(0.); fakep.pz(0.);
+                fakep.e(fakep.mass());
                 fakep.is_fakeparton(true);
 						  	Extraparton.add(fakep);
 						  	//somewhere, we need to make for loop to toss all partons to remnants list.
 						  }
-						  else if (loc > 0){showerquarks[loc-1].col(considering[1].col());
-						  	/*for(int ishq=0;ishq<showerquarks.num();++ishq){
-						  		if(!showerquarks[ishq].is_used() && showerquarks[ishq].acol()==HH_showerptns[loc-1].col()){showerquarks[ishq].acol(considering[0].acol());}
-						  	}
-						  	for(int ishq=0;ishq<HH_showerptns.num();++ishq){
-						  		if(HH_showerptns[ishq].acol()==HH_showerptns[loc-1].col()){if(ishq==loc-1){continue;}HH_showerptns[ishq].acol(considering[0].acol());}
-						  	}//[**]
-						  	HH_showerptns[loc - 1].col(considering[0].acol());*/
-						  }
+						  else if (loc > 0){showerquarks[loc-1].col(considering[1].col());}
 						  else if(loc < 0){HH_thermal[-loc-1].col(considering[1].col());}
-						  /*
-						  int thermsib = findthermalsibling(-element[0] , HH_thermal);
-						  if(thermsib < 0){HH_thermal[thermsib-1].acol(considering[1].col());}
-						  else{HH_showerptns[thermsib+1].acol(considering[1].col()); }
-						  }
-						  */
 				  	}
             //now color tags from both partons are same
           }
@@ -3901,45 +3783,36 @@ void HybridHadronization::recomb(){
 		if(HH_thermal[i].is_used()){HH_thermal[i].status(1); HH_thermal[i].used_reco(true); continue;}
 		if(HH_thermal[i].col() > 0 || HH_thermal[i].acol() > 0){
       //std::cout << "Thermal parton added to remnants: " << HH_thermal[i].id() << "," << HH_thermal[i].col() << "," << HH_thermal[i].acol() << std::endl;
-      HH_remnants.add(HH_thermal[i]); HH_remnants[HH_remnants.num() - 1].par(-i-1); HH_thermal[i].is_remnant(true);
+      HH_remnants.add(HH_thermal[i]); HH_remnants[HH_remnants.num() - 1].par(-i-1); HH_thermal[i].is_remnant(true); HH_thermal[i].is_used(true);
     }
 	}
 
   for(int i = 0; i < Extraparton.num(); ++i ){
     HH_remnants.add(Extraparton[i]);
-  }
+    Extraparton[i].is_used(true); // use the extrapartons during hadronizations of negative partons (background subtraction)
 
-  // add fakeparton for color neutrality
-  //I don't think this will ever actually trip? ~Michael: July 2, 2021
-  HHparton partonforneutrality;
-  parton_collection fpartonforneutrality;
-  fpartonforneutrality.add(partonforneutrality);
-  if(fakepartoninfo.size() > 1){
-    if(fakepartoninfo.at(0) > 0){
-      fpartonforneutrality[0].col(fakepartoninfo.at(1));
-      fpartonforneutrality[0].is_remnant(true);
-      fpartonforneutrality[0].id(1);// generate fake up-quark
-      //std::cout <<endl<<"fake parton is added with following tags : ("<<fpartonforneutrality[0].col()<<" , "<<fpartonforneutrality[0].acol()<<" ) "<<endl;
-      HH_remnants.add(fpartonforneutrality[0]);
-    }else if(fakepartoninfo.at(0) < 0){
-      fpartonforneutrality[0].acol(fakepartoninfo.at(1));
-      fpartonforneutrality[0].is_remnant(true);
-      fpartonforneutrality[0].id(-1); //generate anti-up quark
-      //std::cout <<endl<<"fake parton is added with following tags : ("<<fpartonforneutrality[0].col()<<" , "<<fpartonforneutrality[0].acol()<<" ) "<<endl;
-      HH_remnants.add(fpartonforneutrality[0]);
+    if(Extraparton[i].id() == 21){
+      HHparton fakep1 = Extraparton[i];
+      fakep1.id(1); fakep1.acol(0);
+      fakep1.px(fakep1.px()/2.); fakep1.py(fakep1.py()/2.); fakep1.pz(fakep1.pz()/2.); fakep1.mass(xmq);
+      fakep1.e(std::sqrt(fakep1.px()*fakep1.px()+fakep1.py()*fakep1.py()+fakep1.pz()*fakep1.pz()+fakep1.mass()*fakep1.mass()));
+
+      HHparton fakep2 = Extraparton[i];
+      fakep2.id(-1); fakep2.col(0);
+      fakep2.px(fakep2.px()/2.); fakep2.py(fakep2.py()/2.); fakep2.pz(fakep2.pz()/2.); fakep2.mass(xmq);
+      fakep2.e(std::sqrt(fakep2.px()*fakep2.px()+fakep2.py()*fakep2.py()+fakep2.pz()*fakep2.pz()+fakep2.mass()*fakep2.mass()));
+
+      HH_recomb_extrapartons.add(fakep1);
+      HH_recomb_extrapartons.add(fakep2);
+    } else {
+      HH_recomb_extrapartons.add(Extraparton[i]);
     }
   }
-  fakepartoninfo.clear();
-  fpartonforneutrality.clear();
 
 	//hadrons have been recombined, and output to hadron collection
 	//remnants have been collected, and output to remnant collection
 	//shower partons have all been updated appropriately
 	//thermal partons have all been updated appropriately - make sure that the thermal partons are reset before the recomb module is called again...
-
-	//Future plans:
-	//since we've already read in the thermal parton array, can use that to get the 'fake' parton for the necessary string, if present?
-	//include color after completion?
 
   //end of recombination routine
 }
@@ -4272,7 +4145,7 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
   for(int ijunc=0; ijunc<Tempjunctions.size(); ijunc++){
     std::cout <<" { "<<Tempjunctions.at(ijunc).at(0).at(0)<<" , "<<Tempjunctions.at(ijunc).at(1).at(1)<<" , "<<Tempjunctions.at(ijunc).at(2).at(1)<<" , "<<Tempjunctions.at(ijunc).at(3).at(1)<<" } "<<endl;
     std::cout <<"col/acol: (" << Tempjunctions.at(ijunc).at(1).at(0) << "," << Tempjunctions.at(ijunc).at(2).at(0) << "," << Tempjunctions.at(ijunc).at(3).at(0) << ")" << std::endl;
-}*/
+  }*/
   //Declare essential vectors for string repair
   vector<vector<vector<HHparton>>> JuncStructure;
   vector<vector<HHparton>> JuncLegs; // vector of all junction ( Junction Num, Leg1, Leg2, Leg3)
@@ -4289,7 +4162,6 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
   vector<vector<vector<HHparton>>> Dijunction1; // these partons are in the junction with two legs shared legs!
   vector<vector<HHparton>> Dijunction2;
   //Vector of Indices for Dijunction1 vector to be ordered for invoking Pythia
-  //vector<vector<vector<int>>> DinjunctionInfo1;
   vector<vector<int>> DijunctionInfo1;
   vector<int> DijunctionInfo2; //  { -1: antiJ, +1 : J , 0 : shared leg}
   //these tags should be assigned to corresponding legs in Dijunction1 vector! so DijunctionInfo2 has five elements{since, dijunction structure has five legs!}
@@ -4303,19 +4175,10 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
 
   vector<HHparton> finalstring; // final space for all of the remnant particles being corrected by fake parton addition
 
-
-  //Since MATTER shower is not color neutral, we need add condition for the color neutrality.
-  //First of all, check if the Tempjunction contains color tags of the gluon located at endpoint of string.
-
-  /* just reference below
-  HH_showerptns[showerquarks[element[0]].par()].col(HH_showerptns[showerquarks[element[1]].par()].acol());
-  vector<vector<vector<int>>> Tempjunctions; // vector of all tempjunctions
-  vector<vector<int>> JunctionInfo; // vector of one junction's color tag and particle info
-  vector<int> IdColInfo1;
-  vector<int> IdColInfo2;
-  vector<int> IdColInfo3;
-  vector<int> IdColInfo4;
-  */
+  /*JSINFO << "SP_remnants before stringprep:";
+  for(int irem=0; irem < SP_remnants.num(); ++irem) {
+    std::cout << SP_remnants[irem].id() << "," << SP_remnants[irem].col() << "," << SP_remnants[irem].acol() << std::endl;
+  }*/
 
   // Tempjunctions missing partons? Add thermal or fake
   // find the maximum (anti-)color tag in the remnants list and the tempjunctions
@@ -4349,13 +4212,13 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
     // First try to match to remant parton color/anticolor tags and write matching parton index into tag
     for(int irem=0; irem < SP_remnants.num(); ++irem) {
       if(Tempjunctions.at(ijunc).at(0).at(0) == -1) {
-        if(SP_remnants[irem].acol() == Tempjunctions.at(ijunc).at(1).at(1)) {i1 = irem+1;}
-        if(SP_remnants[irem].acol() == Tempjunctions.at(ijunc).at(2).at(1)) {i2 = irem+1;}
-        if(SP_remnants[irem].acol() == Tempjunctions.at(ijunc).at(3).at(1)) {i3 = irem+1;}
+        if(SP_remnants[irem].acol() == Tempjunctions.at(ijunc).at(1).at(1) && Tempjunctions.at(ijunc).at(1).at(1) != 0) {i1 = irem+1;}
+        if(SP_remnants[irem].acol() == Tempjunctions.at(ijunc).at(2).at(1) && Tempjunctions.at(ijunc).at(2).at(1) != 0) {i2 = irem+1;}
+        if(SP_remnants[irem].acol() == Tempjunctions.at(ijunc).at(3).at(1) && Tempjunctions.at(ijunc).at(3).at(1) != 0) {i3 = irem+1;}
       }else if(Tempjunctions.at(ijunc).at(0).at(0) == 1) {
-        if(SP_remnants[irem].col() == Tempjunctions.at(ijunc).at(1).at(1)) {i1 = irem+1;}
-        if(SP_remnants[irem].col() == Tempjunctions.at(ijunc).at(2).at(1)) {i2 = irem+1;}
-        if(SP_remnants[irem].col() == Tempjunctions.at(ijunc).at(3).at(1)) {i3 = irem+1;}
+        if(SP_remnants[irem].col() == Tempjunctions.at(ijunc).at(1).at(1) && Tempjunctions.at(ijunc).at(1).at(1) != 0) {i1 = irem+1;}
+        if(SP_remnants[irem].col() == Tempjunctions.at(ijunc).at(2).at(1) && Tempjunctions.at(ijunc).at(2).at(1) != 0) {i2 = irem+1;}
+        if(SP_remnants[irem].col() == Tempjunctions.at(ijunc).at(3).at(1) && Tempjunctions.at(ijunc).at(3).at(1) != 0) {i3 = irem+1;}
       }
     }
 
@@ -4363,9 +4226,9 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
     for(int ijunc2=ijunc+1; ijunc2 < Tempjunctions.size(); ++ijunc2) {
       if((Tempjunctions.at(ijunc).at(0).at(0) == -1 && Tempjunctions.at(ijunc2).at(0).at(0) == 1) || (Tempjunctions.at(ijunc).at(0).at(0) == 1 && Tempjunctions.at(ijunc2).at(0).at(0) == -1)) {
         for(int ileg=1; ileg <= 3; ++ileg) {
-          if(Tempjunctions.at(ijunc2).at(ileg).at(1) == Tempjunctions.at(ijunc).at(1).at(1)) {i1 = -ijunc2*10-ileg;}
-          if(Tempjunctions.at(ijunc2).at(ileg).at(1) == Tempjunctions.at(ijunc).at(2).at(1)) {i2 = -ijunc2*10-ileg;}
-          if(Tempjunctions.at(ijunc2).at(ileg).at(1) == Tempjunctions.at(ijunc).at(3).at(1)) {i3 = -ijunc2*10-ileg;}
+          if(Tempjunctions.at(ijunc2).at(ileg).at(1) == Tempjunctions.at(ijunc).at(1).at(1) && Tempjunctions.at(ijunc).at(1).at(1) != 0) {i1 = -ijunc2*10-ileg;}
+          if(Tempjunctions.at(ijunc2).at(ileg).at(1) == Tempjunctions.at(ijunc).at(2).at(1) && Tempjunctions.at(ijunc).at(2).at(1) != 0) {i2 = -ijunc2*10-ileg;}
+          if(Tempjunctions.at(ijunc2).at(ileg).at(1) == Tempjunctions.at(ijunc).at(3).at(1) && Tempjunctions.at(ijunc).at(3).at(1) != 0) {i3 = -ijunc2*10-ileg;}
         }
       }else{
         bool warning = false;
@@ -4459,7 +4322,12 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
       if(loc == 999999999 || loc > 0) {
   	    int fid = ((ran() > 0.33333333) ? ((ran() > 0.5) ? -1 : -2) : -3);
         HHparton fakep = tempparton1; fakep.id(fid); fakep.set_color(0);
-        fakep.set_anti_color(Tempjunctions.at(ijunc).at(1).at(1));
+        if(Tempjunctions.at(ijunc).at(1).at(1) != 0) {
+          fakep.set_anti_color(Tempjunctions.at(ijunc).at(1).at(1));
+        } else {
+          fakep.set_anti_color(++maxtag);
+          Tempjunctions.at(ijunc).at(1).at(1) = maxtag;
+        }
         if(std::abs(fakep.id()) < 3) {
           fakep.mass(xmq);
         } else {fakep.mass(xms);}
@@ -4476,7 +4344,12 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
         fakep.is_fakeparton(true);
         SP_remnants.add(fakep);
       }else if(loc < 0) {
-        HH_thermal[-loc-1].acol(Tempjunctions.at(ijunc).at(1).at(1));
+        if(Tempjunctions.at(ijunc).at(1).at(1) != 0) {
+          HH_thermal[-loc-1].acol(Tempjunctions.at(ijunc).at(1).at(1));
+        } else {
+          HH_thermal[-loc-1].acol(++maxtag);
+          Tempjunctions.at(ijunc).at(1).at(1) = maxtag;
+        }
         HH_thermal[-loc-1].col(0);
         HH_thermal[-loc-1].is_used(true);
         HH_thermal[-loc-1].is_remnant(true);
@@ -4495,7 +4368,12 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
       if(loc == 999999999 || loc > 0) {
 	      int fid = ((ran() > 0.33333333) ? ((ran() > 0.5) ? -1 : -2) : -3);
         HHparton fakep = tempparton2; fakep.id(fid); fakep.set_color(0);
-        fakep.set_anti_color(Tempjunctions.at(ijunc).at(2).at(1));
+        if(Tempjunctions.at(ijunc).at(2).at(1) != 0) {
+          fakep.set_anti_color(Tempjunctions.at(ijunc).at(2).at(1));
+        } else {
+          fakep.set_anti_color(++maxtag);
+          Tempjunctions.at(ijunc).at(2).at(1) = maxtag;
+        }
         if(std::abs(fakep.id()) < 3) {
           fakep.mass(xmq);
         } else {fakep.mass(xms);}
@@ -4512,7 +4390,12 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
         fakep.is_fakeparton(true);
         SP_remnants.add(fakep);
       }else if(loc < 0) {
-        HH_thermal[-loc-1].acol(Tempjunctions.at(ijunc).at(2).at(1));
+        if(Tempjunctions.at(ijunc).at(2).at(1) != 0) {
+          HH_thermal[-loc-1].acol(Tempjunctions.at(ijunc).at(2).at(1));
+        } else {
+          HH_thermal[-loc-1].acol(++maxtag);
+          Tempjunctions.at(ijunc).at(2).at(1) = maxtag;
+        }
         HH_thermal[-loc-1].col(0);
         HH_thermal[-loc-1].is_used(true);
         HH_thermal[-loc-1].is_remnant(true);
@@ -4531,7 +4414,12 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
       if(loc == 999999999 || loc > 0) {
 	      int fid = ((ran() > 0.33333333) ? ((ran() > 0.5) ? -1 : -2) : -3);
         HHparton fakep = tempparton3; fakep.id(fid); fakep.set_color(0);
-        fakep.set_anti_color(Tempjunctions.at(ijunc).at(3).at(1));
+        if(Tempjunctions.at(ijunc).at(3).at(1) != 0) {
+          fakep.set_anti_color(Tempjunctions.at(ijunc).at(3).at(1));
+        } else {
+          fakep.set_anti_color(++maxtag);
+          Tempjunctions.at(ijunc).at(3).at(1) = maxtag;
+        }
         if(std::abs(fakep.id()) < 3) {
           fakep.mass(xmq);
         } else {fakep.mass(xms);}
@@ -4548,7 +4436,12 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
         fakep.is_fakeparton(true);
         SP_remnants.add(fakep);
       }else if(loc < 0) {
-        HH_thermal[-loc-1].acol(Tempjunctions.at(ijunc).at(3).at(1));
+        if(Tempjunctions.at(ijunc).at(3).at(1) != 0) {
+          HH_thermal[-loc-1].acol(Tempjunctions.at(ijunc).at(3).at(1));
+        } else {
+          HH_thermal[-loc-1].acol(++maxtag);
+          Tempjunctions.at(ijunc).at(3).at(1) = maxtag;
+        }
         HH_thermal[-loc-1].col(0);
         HH_thermal[-loc-1].is_used(true);
         HH_thermal[-loc-1].is_remnant(true);
@@ -4566,8 +4459,14 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
       }else{loc = findcloserepl(tempparton1,1, false, true, HH_showerptns, HH_thermal);}
       if(loc == 999999999 || loc > 0) {
 	      int fid = ((ran() > 0.33333333) ? ((ran() > 0.5) ? 1 : 2) : 3);
-        HHparton fakep = tempparton1; fakep.id(fid); fakep.set_color(Tempjunctions.at(ijunc).at(1).at(1));
+        HHparton fakep = tempparton1; fakep.id(fid);
         fakep.set_anti_color(0);
+        if(Tempjunctions.at(ijunc).at(1).at(1) != 0) {
+          fakep.set_color(Tempjunctions.at(ijunc).at(1).at(1));
+        } else {
+          fakep.set_color(++maxtag);
+          Tempjunctions.at(ijunc).at(1).at(1) = maxtag;
+        }
         if(std::abs(fakep.id()) < 3) {
           fakep.mass(xmq);
         } else {fakep.mass(xms);}
@@ -4584,7 +4483,12 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
         fakep.is_fakeparton(true);
         SP_remnants.add(fakep);
       }else if(loc < 0) {
-        HH_thermal[-loc-1].col(Tempjunctions.at(ijunc).at(1).at(1));
+        if(Tempjunctions.at(ijunc).at(1).at(1) != 0) {
+          HH_thermal[-loc-1].col(Tempjunctions.at(ijunc).at(1).at(1));
+        } else {
+          HH_thermal[-loc-1].col(++maxtag);
+          Tempjunctions.at(ijunc).at(1).at(1) = maxtag;
+        }
         HH_thermal[-loc-1].acol(0);
         HH_thermal[-loc-1].is_used(true);
         HH_thermal[-loc-1].is_remnant(true);
@@ -4602,8 +4506,14 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
       }else{loc = findcloserepl(tempparton2,1, false, true, HH_showerptns, HH_thermal);}
       if(loc == 999999999 || loc > 0) {
 	      int fid = ((ran() > 0.33333333) ? ((ran() > 0.5) ? 1 : 2) : 3);
-        HHparton fakep = tempparton2; fakep.id(fid); fakep.set_color(Tempjunctions.at(ijunc).at(2).at(1));
+        HHparton fakep = tempparton2; fakep.id(fid);
         fakep.set_anti_color(0);
+        if(Tempjunctions.at(ijunc).at(2).at(1) != 0) {
+          fakep.set_color(Tempjunctions.at(ijunc).at(2).at(1));
+        } else {
+          fakep.set_color(++maxtag);
+          Tempjunctions.at(ijunc).at(2).at(1) = maxtag;
+        }
         if(std::abs(fakep.id()) < 3) {
           fakep.mass(xmq);
         } else {fakep.mass(xms);}
@@ -4620,7 +4530,12 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
         fakep.is_fakeparton(true);
         SP_remnants.add(fakep);
       }else if(loc < 0) {
-        HH_thermal[-loc-1].col(Tempjunctions.at(ijunc).at(2).at(1));
+        if(Tempjunctions.at(ijunc).at(2).at(1) != 0) {
+          HH_thermal[-loc-1].col(Tempjunctions.at(ijunc).at(2).at(1));
+        } else {
+          HH_thermal[-loc-1].col(++maxtag);
+          Tempjunctions.at(ijunc).at(2).at(1) = maxtag;
+        }
         HH_thermal[-loc-1].acol(0);
         HH_thermal[-loc-1].is_used(true);
         HH_thermal[-loc-1].is_remnant(true);
@@ -4638,8 +4553,14 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
       }else{loc = findcloserepl(tempparton3,1, false, true, HH_showerptns, HH_thermal);}
       if(loc == 999999999 || loc > 0) {
 	      int fid = ((ran() > 0.33333333) ? ((ran() > 0.5) ? 1 : 2) : 3);
-        HHparton fakep = tempparton3; fakep.id(fid); fakep.set_color(Tempjunctions.at(ijunc).at(3).at(1));
+        HHparton fakep = tempparton3; fakep.id(fid);
         fakep.set_anti_color(0);
+        if(Tempjunctions.at(ijunc).at(3).at(1) != 0) {
+          fakep.set_color(Tempjunctions.at(ijunc).at(3).at(1));
+        } else {
+          fakep.set_color(++maxtag);
+          Tempjunctions.at(ijunc).at(3).at(1) = maxtag;
+        }
         if(std::abs(fakep.id()) < 3) {
           fakep.mass(xmq);
         } else {fakep.mass(xms);}
@@ -4656,7 +4577,12 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
         fakep.is_fakeparton(true);
         SP_remnants.add(fakep);
       }else if(loc < 0) {
-        HH_thermal[-loc-1].col(Tempjunctions.at(ijunc).at(3).at(1));
+        if(Tempjunctions.at(ijunc).at(3).at(1) != 0) {
+          HH_thermal[-loc-1].col(Tempjunctions.at(ijunc).at(3).at(1));
+        } else {
+          HH_thermal[-loc-1].col(++maxtag);
+          Tempjunctions.at(ijunc).at(3).at(1) = maxtag;
+        }
         HH_thermal[-loc-1].acol(0);
         HH_thermal[-loc-1].is_used(true);
         HH_thermal[-loc-1].is_remnant(true);
@@ -5697,19 +5623,6 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
     betaB.Set(-betaB.x(),-betaB.y(),-betaB.z(),betaB.t());
     FourVector pos_lab = HHboost(betaB, pos_CM);
 
-    //finding relative momenta of partons in CM frame
-    /*FourVector k_rel[2];
-    k_rel[0].Set(
-    (Recombearly1.at(irb)[1].mass()*p_BCM[0].x()-Recombearly1.at(irb)[0].mass()*p_BCM[1].x())/(Recombearly1.at(irb)[0].mass()+Recombearly1.at(irb)[1].mass()),
-    (Recombearly1.at(irb)[1].mass()*p_BCM[0].y()-Recombearly1.at(irb)[0].mass()*p_BCM[1].y())/(Recombearly1.at(irb)[0].mass()+Recombearly1.at(irb)[1].mass()),
-    (Recombearly1.at(irb)[1].mass()*p_BCM[0].z()-Recombearly1.at(irb)[0].mass()*p_BCM[1].z())/(Recombearly1.at(irb)[0].mass()+Recombearly1.at(irb)[1].mass()),
-    0.);
-    k_rel[1].Set(
-    (Recombearly1.at(irb)[2].mass()*(p_BCM[0].x()+p_BCM[1].x())-(Recombearly1.at(irb)[0].mass()+Recombearly1.at(irb)[1].mass())*p_BCM[2].x())/(Recombearly1.at(irb)[0].mass()+Recombearly1.at(irb)[1].mass()+Recombearly1.at(irb)[2].mass()),
-    (Recombearly1.at(irb)[2].mass()*(p_BCM[0].y()+p_BCM[1].y())-(Recombearly1.at(irb)[0].mass()+Recombearly1.at(irb)[1].mass())*p_BCM[2].y())/(Recombearly1.at(irb)[0].mass()+Recombearly1.at(irb)[1].mass()+Recombearly1.at(irb)[2].mass()),
-    (Recombearly1.at(irb)[2].mass()*(p_BCM[0].z()+p_BCM[1].z())-(Recombearly1.at(irb)[0].mass()+Recombearly1.at(irb)[1].mass())*p_BCM[2].z())/(Recombearly1.at(irb)[0].mass()+Recombearly1.at(irb)[1].mass()+Recombearly1.at(irb)[2].mass()),
-    0.);*/
-
     //finding relative positions of partons in CM frame
     FourVector pos_rel_square[2];
     pos_rel_square[0].Set((cur_pos[0].x()-cur_pos[1].x())/sqrt(2.),(cur_pos[0].y()-cur_pos[1].y())/sqrt(2.),(cur_pos[0].z()-cur_pos[1].z())/sqrt(2.),0.);
@@ -6150,27 +6063,11 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
       Transitsinglejunction1[its1][i].mass(Transitsinglejunction1[its1][i].mass()/2.);
     }}
   }
-  //EP_conservation checking through dijunction and single junction is finished!!, and Mother Daughter tag incrementation done from below.{starting from Transitdijunction1 to Transitsinglejunction1}
-  int standard = 0; //integer for tracking number of particles attached.
 
   for(int itagdij1 = 0; itagdij1 < Transitdijunction1.size(); itagdij1++ ){
     for(int itagdij2 = 0; itagdij2 < Transitdijunction1.at(itagdij1).size(); itagdij2++){
-      // at the moment this is not needed, as the dijunctions are handed to pythia separately
-      /*if(Transitdijunction1.at(itagdij1).at(itagdij2).PY_par1() >= 0){
-        Transitdijunction1.at(itagdij1).at(itagdij2).PY_par1(Transitdijunction1.at(itagdij1).at(itagdij2).PY_par1() + standard);
-      }
-      if(Transitdijunction1.at(itagdij1).at(itagdij2).PY_par2() >= 0){
-        Transitdijunction1.at(itagdij1).at(itagdij2).PY_par2(Transitdijunction1.at(itagdij1).at(itagdij2).PY_par2() + standard);
-      }
-      if(Transitdijunction1.at(itagdij1).at(itagdij2).PY_dau1() >= 0){
-        Transitdijunction1.at(itagdij1).at(itagdij2).PY_dau1(Transitdijunction1.at(itagdij1).at(itagdij2).PY_dau1() + standard);
-      }
-      if(Transitdijunction1.at(itagdij1).at(itagdij2).PY_dau2() >= 0){
-        Transitdijunction1.at(itagdij1).at(itagdij2).PY_dau2(Transitdijunction1.at(itagdij1).at(itagdij2).PY_dau2() + standard);
-      }*/
       WaitingLineforPY.push_back(Transitdijunction1.at(itagdij1).at(itagdij2));
     }
-    //standard = standard + Transitdijunction1.at(itagdij1).size();
   }
 
   //dignostic measure{Transitdijunction1}
@@ -6185,28 +6082,11 @@ void HybridHadronization::stringprep(parton_collection& SP_remnants, parton_coll
     }
   }*/
 
-  /*for(int i=0; i<WaitingLineforPY.size(); i++) {
-    std::cout << WaitingLineforPY[i].id() << "," << WaitingLineforPY[i].col() << "," << WaitingLineforPY[i].acol() << "," << WaitingLineforPY[i].PY_par1() << "," << WaitingLineforPY[i].PY_par2() << std::endl;
-  }
-  std::cout << "*************" << std::endl;*/
 
   for(int itagsj1 = 0; itagsj1 < Transitsinglejunction1.size(); itagsj1++ ){
     for(int itagsj2 = 0; itagsj2 < Transitsinglejunction1.at(itagsj1).size(); itagsj2++){
-      /*if(Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_par1() >= 0){
-        Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_par1(Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_par1() + standard);
-      }
-      if(Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_par2() >= 0){
-        Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_par2(Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_par2() + standard);
-      }
-      if(Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_dau1() >= 0){
-        Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_dau1(Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_dau1() + standard);
-      }
-      if(Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_dau2() >= 0){
-        Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_dau2(Transitsinglejunction1.at(itagsj1).at(itagsj2).PY_dau2() + standard);
-      }*/
       WaitingLineforPY.push_back(Transitsinglejunction1.at(itagsj1).at(itagsj2));
     }
-    //standard = standard + Transitsinglejunction1.at(itagsj1).size();
   }
 
   /*for(int i=0; i<WaitingLineforPY.size(); i++) {
@@ -6409,6 +6289,7 @@ void HybridHadronization::set_spacetime_for_pythia_hadrons(Pythia8::Event &event
   vector<double> Case3_partons_center; // store the center position of the partons
 
   bool compute_more_precise_positions = true;
+  bool warn_could_not_find_positions = false;
 
   for(int hadron_idx = 1; hadron_idx < event.size(); hadron_idx++) {
     if(event[hadron_idx].isFinal()) { //take only final hadrons from pythia
@@ -6670,8 +6551,9 @@ void HybridHadronization::set_spacetime_for_pythia_hadrons(Pythia8::Event &event
         }
 				hadron_out.x(avg_x); hadron_out.y(avg_y); hadron_out.z(avg_z); hadron_out.x_t(avg_t);
       }
-      if(!info_found){
+      if(!info_found) {
         compute_more_precise_positions = false;
+        warn_could_not_find_positions = true;
         /*JSWARN << "Could not find spacetime information for hadron in pythia event (string fragmentation attempt = "
               << pythia_attempt << "), had_col/acol = (" << hadron_col << "," << hadron_acol << ") , col_known = ("
               << col_known << "," << acol_known << ")";*/
@@ -6683,6 +6565,12 @@ void HybridHadronization::set_spacetime_for_pythia_hadrons(Pythia8::Event &event
 		  //this is done in hadronization calling function, after invoke_py function is finished
   		final_hadrons_from_pythia.push_back(hadron_out);
     }
+  }
+
+  //warn about not found position for hadrons only once per function call
+  if(warn_could_not_find_positions && GetXMLElementInt({"Afterburner", "include_fragmentation_hadrons"}) == 1) {
+    JSWARN << "Could not find the spacetime information for hadron in pythia event (string fragmentation attempt ="
+    << pythia_attempt << "), set it to (0,0,0,0)";
   }
 
   //now let's do it a bit more precise and distribute the positions along the string segments instead of using the average
@@ -7081,11 +6969,11 @@ void HybridHadronization::bring_hadrons_to_mass_shell(hadron_collection& HH_hadr
 
 void HybridHadronization::set_initial_parton_masses(parton_collection& HH_partons) {
   //to calc. E conservation violation
-  //double Ebefore = 0.; double Eafter = 0.; double pTbefore = 0.; double pTafter = 0.;
-  //for(int iPart=0; iPart<HH_partons.num(); ++iPart){Ebefore += HH_partons[iPart].e(); pTbefore += HH_partons[iPart].pt();}
-  //std::cout << std::setprecision(5);
-  //std::ofstream eviol; std::ofstream echg; std::ofstream ptchg;
-  //eviol.open("Evio_partons.dat", std::ios::app); echg.open("Echg_partons.dat", std::ios::app); ptchg.open("ptchg_partons.dat", std::ios::app);
+  /*double Ebefore = 0.; double Eafter = 0.; double pTbefore = 0.; double pTafter = 0.;
+  for(int iPart=0; iPart<HH_partons.num(); ++iPart){Ebefore += HH_partons[iPart].e(); pTbefore += HH_partons[iPart].pt();}
+  std::cout << std::setprecision(5);
+  std::ofstream eviol; std::ofstream echg; std::ofstream ptchg;
+  eviol.open("Evio_partons.dat", std::ios::app); echg.open("Echg_partons.dat", std::ios::app); ptchg.open("ptchg_partons.dat", std::ios::app);*/
 
   // case for only one parton in the event -> force to parton mass
   if(HH_partons.num() == 1) {
@@ -7334,7 +7222,7 @@ void HybridHadronization::set_initial_parton_masses(parton_collection& HH_parton
   }
 
   //calc. Etot after
-  //for(int iPart=0; iPart<HH_partons.num(); ++iPart){Eafter += HH_partons[iPart].e(); pTafter += HH_partons[iPart].pt();}
-  //echg << Eafter-Ebefore << "\n"; ptchg << pTafter-pTbefore << "\n";
-  //eviol.close(); echg.close(); ptchg.close();
+  /*for(int iPart=0; iPart<HH_partons.num(); ++iPart){Eafter += HH_partons[iPart].e(); pTafter += HH_partons[iPart].pt();}
+  echg << Eafter-Ebefore << "\n"; ptchg << pTafter-pTbefore << "\n";
+  eviol.close(); echg.close(); ptchg.close();*/
 }

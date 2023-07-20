@@ -57,7 +57,7 @@ Then go back to `~/X-SCAPE/build/` and run `make -jN` with `N` the number of cpu
 
 > Note: In case you want to go back to a *clean* version of the X-SCAPE code after the session, then you can run `./restore_code.sh` in the `~/SummerSchool2023/Jul27_Hadronization/replace_files/` directory and run `make` in the build directory.
 
-For the hands-on session we will need an additional python package for the analysis of the data, which is called *sparkx*. You can install it in the docker container using:
+For the hands-on session we will need an additional python package for the analysis of the data, which is called *sparkx* (Software Package for Analyzing Relativistic Kinematics in Collision eXperiments). You can install it in the docker container using:
 ```
 pip3 install sparkx
 ```
@@ -81,15 +81,29 @@ The simulation of 10000 $e^+e^-$ events will run for up to $\approx 4$ minutes, 
 ./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_brick_hybrid_2fm.xml
 ./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_brick_hybrid_4fm.xml
 ```
-The simulation of 1000 jets in a 2 / 4 fm brick will run for up to $\approx 5 / 9$ minutes, depending on your system.
+The simulation of 1000 jets in a 2 / 4 fm brick will run for up to $\approx 6 / 12$ minutes, depending on your system.
 
 ```
 ./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_brick_colorless_2fm.xml
 ```
-The simulation of 1000 jets in colorless hadronization will run for up to $\approx 7$ minutes, depending on your system.
+The simulation of 1000 jets in colorless hadronization will run for up to $\approx 5$ minutes, depending on your system.
+
+There are two simulations we want to run as a vacuum baseline for hybrid and colorless hadronization:
+```
+./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_hybrid_baseline.xml
+```
+
+```
+./runJetscape ../../SummerSchool2023/Jul27_Hadronization/xml_files/jetscape_user_colorless_baseline.xml
+```
+The simulation of 1000 jets in the vacuum will run for up to $\approx 0.5$ minutes, depending on your system.
 
 # Part IV: Hands-on Session
 
 ## Jupyter Notebooks
 
-Information on the jupyter notebooks...
+To run the jupyter notebooks in the docker container put the following command into your terminal:
+```
+jupyter-notebook --ip 0.0.0.0 --no-browser
+```
+and copy the link from the terminal into your browser.

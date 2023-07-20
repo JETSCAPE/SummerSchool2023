@@ -5,12 +5,18 @@ cp -r HybridHadronization.h ../../../X-SCAPE/src/hadronization/
 echo "replacing HybridHadronization.cc"
 cp -r HybridHadronization.cc ../../../X-SCAPE/src/hadronization/
 
+echo "replacing ColorlessHadronization.cc"
+cp -r ColorlessHadronization.cc ../../../X-SCAPE/src/hadronization/
+
+echo "replacing ColoredHadronization.cc"
+cp -r ColoredHadronization.cc ../../../X-SCAPE/src/hadronization/
+
 echo "replacing src/CMakeLists.txt"
 cp -r CMakeLists.txt ../../../X-SCAPE/src/
 
-echo "replacing ThermPtnSampler.h"
+echo "adding ThermPtnSampler.h"
 cp -r ThermPtnSampler.h ../../../X-SCAPE/src/hadronization/
-echo "replacing ThermPtnSampler.cc"
+echo "adding ThermPtnSampler.cc"
 cp -r ThermPtnSampler.cc ../../../X-SCAPE/src/hadronization/
 
 echo "adding epemGun.h"
@@ -20,9 +26,9 @@ cp -r epemGun.cc ../../../X-SCAPE/src/initialstate/
 echo "replacing JetScape.cc"
 cp -r JetScape.cc ../../../X-SCAPE/src/framework/
 
-echo "adding Matter.h"
+echo "replacing Matter.h"
 cp -r Matter.h ../../../X-SCAPE/src/jet/
-echo "adding Matter.cc"
+echo "replacing Matter.cc"
 cp -r Matter.cc ../../../X-SCAPE/src/jet/
 
 echo "replacing Brick.h"
