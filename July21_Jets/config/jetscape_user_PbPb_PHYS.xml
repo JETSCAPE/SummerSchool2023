@@ -2,7 +2,7 @@
 
   <nEvents>50</nEvents>
   <setReuseHydro>true</setReuseHydro>
-  <nReuseHydro>250</nReuseHydro>
+  <nReuseHydro>50</nReuseHydro>
 
   <JetScapeWriterAscii>on</JetScapeWriterAscii>
 
