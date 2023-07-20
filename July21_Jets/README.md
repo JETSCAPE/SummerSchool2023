@@ -251,7 +251,7 @@ cd analysis_scripts
 
 Then first, run `jet_reconstruction.py` for pp events:
 ```
-python jet_reconstruction.py -i ../../../X-SCAPE/build/test_out_pp_final_state_hadrons.dat -o ../data/jet_pp.dat
+python3 jet_reconstruction.py -i ../../../X-SCAPE/build/test_out_pp_final_state_hadrons.dat -o ../data/jet_pp.dat
 ```
 
 Option `-i` is used to specify the input file path (final state hadron list)
@@ -260,7 +260,7 @@ and option `-o` is for the output file path
 
 Then, we run `jet_reconstruction.py` for PbPb events:
 ```
-python jet_reconstruction.py -i ../../../X-SCAPE/build/test_out_pbpb_final_state_hadrons.dat -o ../data/jet_pbpb.dat
+python3 jet_reconstruction.py -i ../../../X-SCAPE/build/test_out_pbpb_final_state_hadrons.dat -o ../data/jet_pbpb.dat
 ```
 
 Once the analysis code finishes, you will find `jet_pp.dat` and `jet_pbpb.dat` 
