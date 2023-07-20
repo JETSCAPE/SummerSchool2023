@@ -4,7 +4,7 @@
 
   <nEvents> 1 </nEvents>
   <setReuseHydro> true </setReuseHydro>
-  <nReuseHydro> 5 </nReuseHydro>
+  <nReuseHydro> 1 </nReuseHydro>
   <vlevel> 0 </vlevel>
   <!-- fix the random seed -->
   <Random>
@@ -24,7 +24,7 @@
       <!-- Initial condition -->
       <Trento>
           <!-- sqrts is in GeV, cross-section is in mb -->
-          <!-- Here is an example for 20-30% Pb+Pb collisions at 2.76 TeV -->
+          <!-- Here is an example for 0-10% Pb+Pb collisions at 2.76 TeV -->
           <PhysicsInputs  projectile='Pb'
                   target='Pb'
                   sqrts='2760.'
@@ -54,6 +54,8 @@
   <!-- Hydro  Module 1 -->
   <Hydro>
     <MUSIC>
+      <output_evolution_to_file>2</output_evolution_to_file>
+      <InitialProfile>42</InitialProfile>
       <name>MUSIC_1</name>
       <freezeout_temperature>0.150</freezeout_temperature>
     </MUSIC>
@@ -112,6 +114,8 @@
   <Hydro>
     <MUSIC>
       <name>MUSIC_2</name>
+      <output_evolution_to_file>1</output_evolution_to_file>
+      <InitialProfile>42</InitialProfile>
       <freezeout_temperature>0.150</freezeout_temperature>
     </MUSIC>
     <AddLiquefier> true </AddLiquefier>

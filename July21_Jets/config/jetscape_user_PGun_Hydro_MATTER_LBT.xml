@@ -6,7 +6,7 @@
 
   <JetScapeWriterAscii>on</JetScapeWriterAscii>
 
-  <outputFilename>test_out</outputFilename>
+  <outputFilename>test_out_PGun_Hydro_MATTER_LBT</outputFilename>
   <JetScapeWriterAscii> on </JetScapeWriterAscii>
   <JetScapeWriterFinalStatePartonsAscii> on </JetScapeWriterFinalStatePartonsAscii>
   <JetScapeWriterFinalStateHadronsAscii> on </JetScapeWriterFinalStateHadronsAscii>

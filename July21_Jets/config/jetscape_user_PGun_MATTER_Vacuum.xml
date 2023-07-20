@@ -1,6 +1,6 @@
 <jetscape>
 
-  <nEvents>1000</nEvents>
+  <nEvents>100</nEvents>
 
 
   <JetScapeWriterAscii>on</JetScapeWriterAscii>

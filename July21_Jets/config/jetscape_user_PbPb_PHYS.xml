@@ -1,6 +1,6 @@
 <jetscape>
 
-  <nEvents>250</nEvents>
+  <nEvents>50</nEvents>
   <setReuseHydro>true</setReuseHydro>
   <nReuseHydro>250</nReuseHydro>
 
