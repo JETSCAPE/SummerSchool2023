@@ -63,8 +63,17 @@ cd ~/X-SCAPE
 git pull
 ```
 
-One event averaged hydro profile (5.02 GeV) can be found at `SummerSchool2023/July21_Jets/test_hydro_profile/event-0` for this session:
+Go to `~/X-Scape/examples` and download a test hydro profile by using following command.
 
+```
+./get_hydroSample_PbPb2760_cen_00-05.sh
+```
+
+This will download the bulk medium evolution file (initial state + hydro) as:
+
+```
+~/X-Scape/examples/test_hydro_files/event-0
+```
 
 ### <span style="color: orange; ">1.3. Build X-SCAPE with LBT-tables, MUSIC and iSS</span>
 
