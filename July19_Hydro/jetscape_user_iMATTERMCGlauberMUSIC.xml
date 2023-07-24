@@ -22,7 +22,7 @@
     <PythiaGun>
       <pTHatMin>7.4</pTHatMin>
       <pTHatMax>-1</pTHatMax>
-      <eCM>50.0</eCM>
+      <eCM>5020.0</eCM>
       <LinesToRead>
         PhaseSpace:bias2Selection = on
         PhaseSpace:bias2SelectionPow = 4

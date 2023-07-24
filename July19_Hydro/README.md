@@ -523,14 +523,14 @@ By changing parameters in the `input`, users can plot the string distributions a
 
 > Note: We will be running the following command lines in directory: `X-SCAPE/build`
 
-Open a **new** terminal, and get inside the docker container with a different name.
-Launch jupyter notebook inside the docker contain with the following command
+If you have already installed `jupyter` and the python modules `matplotlib` and `scipy` in your own computer, then you just open a new terminal, and run the command `jupyter notebook` to launch the jupyter notebook. If you haven't installed them, you can 
+launch jupyter notebook inside the docker contain with the following command
 in our working directory (**`~/X-SCAPE/build`**),
 
 ```
 pip install jupyterlab==3.0.0 tornado==6.1
 cd  ~/jetscape-docker/X-SCAPE/build
-jupyter notebook --ip 0.0.0.0 --no-browser 
+jupyter notebook
 ```
 
 Once the jupyter notebook is running in the background, the user can click
@@ -745,7 +745,7 @@ The folder `script` contains two short scripts, `main_get_hard_hadron_yield.cc` 
 
 ```bash
 g++ -o Get_Soft main_get_soft_hadron_yield.cc
-g++ -o Get_Hard main_get_soft_hadron_yield.cc
+g++ -o Get_Hard main_get_hard_hadron_yield.cc
 ```
 
 Then move the `Get_Soft` and `Get_Hard` executable files into the `build` folder, and run them by 
