@@ -55,9 +55,9 @@ Go to `~/SummerSchool2023/Jul27_Hadronization/replace_files/` and execute the ba
 ```
 Then go back to `~/X-SCAPE/build/` and run `make -jN` with `N` the number of cpu cores you want to use for the process.
 
-> Note: In case you want to go back to a *clean* version of the X-SCAPE code after the session, then you can run `./restore_code.sh` in the `~/SummerSchool2023/Jul27_Hadronization/replace_files/` directory and run `make` in the build directory.
+> Note: In case you want to go back to a *clean* version of the X-SCAPE code after the session, then you can run `./restore_code.sh` in the `~/SummerSchool2023/Jul27_Hadronization/replace_files/` directory and run the `cmake` and `make` commands in a new *build* directory.
 
-For the hands-on session we will need an additional python package for the analysis of the data, which is called *sparkx* (Software Package for Analyzing Relativistic Kinematics in Collision eXperiments). You can install it in the docker container using:
+For the hands-on session we will need an additional python package for the analysis of the data in the docker container, which is called *sparkx* (Software Package for Analyzing Relativistic Kinematics in Collision eXperiments). You can install it using:
 ```
 pip3 install sparkx
 ```
